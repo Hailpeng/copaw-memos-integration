@@ -1,0 +1,64 @@
+# 更新日志
+
+所有重要的更改都会记录在此文件中。
+
+格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
+版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
+
+## [v0.02] - 2026-03-22
+
+### 修复
+- 修复上下文过长导致报错的问题
+- 修复 `MemosRecallHook.__call__` 记忆注入逻辑，正确将记忆注入到用户消息
+
+### 新增
+- `maxItemChars` 配置项（默认 8000 字符），限制每条记忆最大字符数
+- `config.json` 默认配置模板
+- `_truncate_text()` 方法截断超长记忆
+- `_format_facts()` / `_format_preferences()` 按 MemOS 格式化记忆
+
+### 变更
+- **禁用 `MemoryCompactionHook`** - 由 MemOS 负责上下文统一管理
+- 更新默认配置为原版 OpenClaw Plugin 默认值：
+  - `memoryLimit`: 10 → 9
+  - `preferenceLimit`: 5 → 6
+  - `toolMemoryLimit`: 5 → 6
+  - `threshold`: 0.1 → 0.45
+
+### 文档
+- 新增「上下文管理策略」章节
+- 更新配置说明
+
+## [v0.01] - 2026-03-22
+
+### 新增
+- MemOS Cloud 基础集成
+- `MemosRecallHook` - 自动召回记忆
+- `MemosAddHook` - 自动存储对话
+- `Recall Filter` - LLM 二次过滤支持
+- 知识库管理工具
+- 多模态记忆支持
+- 备份恢复机制
+
+### 已知问题
+- 上下文过长时会报错
+- 缺少 `maxItemChars` 配置限制记忆大小
+
+---
+
+## 版本说明
+
+### 版本号格式
+
+- **主版本号 (Major)**: 不兼容的 API 更改
+- **次版本号 (Minor)**: 向后兼容的功能新增
+- **修订号 (Patch)**: 向后兼容的问题修复
+
+### 变更类型
+
+- `新增` - 新功能
+- `变更` - 现有功能的变更
+- `弃用` - 即将移除的功能
+- `移除` - 已移除的功能
+- `修复` - 问题修复
+- `安全` - 安全相关修复
