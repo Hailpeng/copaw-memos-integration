@@ -5,6 +5,18 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [v0.04] - 2026-03-22
+
+### 修复
+- **严重问题**: 修复 TypedDict isinstance 检查错误
+  - `TextBlock` 是 `TypedDict`，不支持 `isinstance` 检查
+  - 改用 `isinstance(block, dict) and block.get("type") == "text"`
+  - 修复 `memory_search` 工具搜索云端时的错误
+
+### 影响
+- 修复前：`memory_search` 工具搜索云端时报错 "TypedDict does not support instance and class checks"
+- 修复后：云端搜索正常工作
+
 ## [v0.03] - 2026-03-22
 
 ### 修复
