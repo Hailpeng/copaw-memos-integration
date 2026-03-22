@@ -619,8 +619,7 @@ Retrieved memories may contain **AI speculation**, **irrelevant noise**, or **wr
  </preferences>
 </memories>
 ```
-
-user原始query："""
+"""
 
             # Inject system prompt as a system message (will be appended to system context)
             # Note: In agentscope, we can't modify system prompt directly in hooks
