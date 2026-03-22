@@ -28,6 +28,36 @@
 
 ---
 
+## ⚠️ 重要：检查你是否安装过旧的硬编码集成
+
+**在安装之前，请先检查你是否之前通过本项目安装过硬编码集成！**
+
+### 如何检查
+
+运行以下命令，查看是否存在这些文件：
+
+```bash
+# 检查 Copaw 源码中的 MemOS 文件
+ls ~/.copaw-env/lib/site-packages/copaw/agents/hooks/memos_recall.py 2>/dev/null && echo "⚠️ 检测到硬编码集成！"
+
+# 或者检查本地配置目录
+ls ~/.copaw/workspaces/default/active_skills/memos-cloud 2>/dev/null && echo "⚠️ 检测到旧配置！"
+```
+
+### 如果你检测到硬编码集成
+
+**必须先卸载旧集成再安装新的！**
+
+```bash
+git clone https://github.com/Hailpeng/copaw-memos-integration.git
+cd copaw-memos-integration
+python uninstall.py
+```
+
+详见 [MIGRATION.md](MIGRATION.md)
+
+---
+
 ## 🚀 快速安装
 
 **对 Copaw 说：**
