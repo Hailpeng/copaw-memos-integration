@@ -8,6 +8,97 @@
 
 ---
 
+## 🤖 自动安装指南（Copaw 用户）
+
+**如果你是 Copaw 用户，只需对 Copaw 说：**
+
+> "帮我安装这个仓库中的 MemOS 记忆架构：https://github.com/Hailpeng/copaw-memos-integration"
+
+Copaw 将自动执行以下安装步骤：
+
+### 步骤 1：克隆仓库
+
+```bash
+git clone https://github.com/Hailpeng/copaw-memos-integration.git
+```
+
+### 步骤 2：获取 MemOS API Key
+
+- 访问 https://memos.memtensor.cn 注册并获取 API Key
+- API Key 格式：`mpg-xxx`
+
+### 步骤 3：复制源码文件到 Copaw
+
+将仓库 `src/` 目录下的文件复制到 Copaw 安装目录：
+
+```
+src/hooks/memos_recall.py    → copaw/agents/hooks/memos_recall.py
+src/tools/memory_search.py   → copaw/agents/tools/memory_search.py
+src/memory/memory_manager.py → copaw/agents/memory/memory_manager.py
+```
+
+### 步骤 4：修改 Copaw 源码
+
+需要修改以下文件（参考 `src/patches/` 目录中的示例）：
+
+1. **`agents/hooks/__init__.py`** - 添加：
+   ```python
+   from .memos_recall import MemosRecallHook, MemosAddHook
+   # 在 __all__ 中添加: "MemosRecallHook", "MemosAddHook"
+   ```
+
+2. **`agents/tools/__init__.py`** - 添加：
+   ```python
+   from .memory_search import (
+       create_memory_search_tool,
+       create_memory_add_tool,
+       create_memory_feedback_tool,
+       create_memory_get_tool,
+       create_memory_delete_tool,
+       create_task_status_tool,
+       create_knowledgebase_tools,
+   )
+   # 在 __all__ 中添加这些导出
+   ```
+
+3. **`agents/react_agent.py`** - 在 `_register_hooks()` 方法中添加 MemOS hook 注册代码（参考 `src/patches/react_agent_patch.py`）
+
+### 步骤 5：创建配置文件
+
+创建 `~/.copaw/workspaces/default/active_skills/memos-cloud/config.json`：
+
+```json
+{
+  "apiKey": "mpg-YOUR_API_KEY_HERE",
+  "baseUrl": "https://memos.memtensor.cn/api/openmem/v1",
+  "userId": "copaw-user",
+  "recall": {
+    "memoryLimit": 9,
+    "preferenceLimit": 6,
+    "toolMemoryLimit": 6,
+    "threshold": 0.45,
+    "maxItemChars": 8000
+  }
+}
+```
+
+### 步骤 6：重启 Copaw
+
+```bash
+copaw restart
+```
+
+### 验证安装
+
+重启后日志中应显示：
+
+```
+Registered MemOS recall hook
+Registered MemOS add hook
+```
+
+---
+
 ## 📖 关于本项目
 
 ### 项目目的
