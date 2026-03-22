@@ -1,3 +1,9 @@
-## 🐛 Bug Fixes
+# v0.075 - subprocess 导入修复
 
-- **修复 `subprocess` 导入缺失**: `restore_memos.py` 中的 `get_copaw_path()` 函数使用了 `subprocess.run()`，但缺少 `import subprocess`，导致运行时报错 `NameError: name 'subprocess' is not defined`
+## 修复内容
+
+- 修复 `restore_memos.py` 缺少 `subprocess` 模块导入的问题
+
+## 变更文件
+
+- `restore_memos.py` - 添加 `import subprocess`

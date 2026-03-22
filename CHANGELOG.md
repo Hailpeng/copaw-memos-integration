@@ -5,6 +5,24 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [v0.08] - 2026-03-23
+
+### 变更
+- **优化默认配置** - 降低召回量防止上下文超限
+  - `memoryLimit`: 9 → 3
+  - `preferenceLimit`: 6 → 2
+  - `toolMemoryLimit`: 6 → 2
+  - `maxItemChars`: 8000 → 2000
+
+### 新增
+- `localMemoryLimit` 配置项（默认 10），限制本地保留的最近消息数
+- `enableMemoryReplacement` 配置项（默认 true），启用本地 memory 裁剪
+
+### 原因
+- 上下文预算有限的模型（如 32K）容易因召回过多记忆导致超限
+- 优先保证不超限，宁可减少召回量也不允许触发超限错误
+- 用户可根据实际模型上下文大小自行调高配置
+
 ## [v0.07] - 2026-03-22
 
 ### 修复

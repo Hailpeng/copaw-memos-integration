@@ -3,13 +3,13 @@
   "baseUrl": "https://memos.memtensor.cn/api/openmem/v1",
   "userId": "copaw-user",
   "recall": {
-    "memoryLimit": 9,
-    "preferenceLimit": 6,
-    "toolMemoryLimit": 6,
+    "memoryLimit": 3,
+    "preferenceLimit": 2,
+    "toolMemoryLimit": 2,
     "includePreference": true,
     "includeToolMemory": true,
     "threshold": 0.45,
-    "maxItemChars": 8000,
+    "maxItemChars": 2000,
     "queryPrefix": "",
     "recallGlobal": true,
     "knowledgebaseIds": [],
@@ -24,7 +24,9 @@
       "candidateLimit": 30,
       "maxItemChars": 500,
       "failOpen": true
-    }
+    },
+    "localMemoryLimit": 10,
+    "enableMemoryReplacement": true
   },
   "add": {
     "captureStrategy": "last_turn",
