@@ -1066,8 +1066,9 @@ class MemoryManager(ReMeLight):
         # Extract local text content
         local_text = ""
         for block in local_result.content or []:
-            if isinstance(block, TextBlock):
-                local_text = block.text or ""
+            # TextBlock is a TypedDict, use dict check instead of isinstance
+            if isinstance(block, dict) and block.get("type") == "text":
+                local_text = block.get("text", "")
                 break
 
         # Format cloud memories
