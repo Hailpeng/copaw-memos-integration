@@ -5,6 +5,17 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [v0.03] - 2026-03-22
+
+### 修复
+- **严重问题**: 修复配置路径使用错误工作目录的问题
+  - 使用 `workspace_dir` 而非全局 `WORKING_DIR` 加载 MemOS 配置
+  - 此问题导致 MemOS hooks 未被注册，云端记忆功能完全失效
+
+### 影响
+- 修复前：新会话无法召回云端记忆，`memory_search` 工具未搜索云端
+- 修复后：MemOS hooks 正确注册，云端记忆功能正常工作
+
 ## [v0.02] - 2026-03-22
 
 ### 修复
