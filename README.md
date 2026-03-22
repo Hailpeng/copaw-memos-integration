@@ -8,7 +8,7 @@
 > - 本项目不是 Copaw 官方插件
 > - 使用本项目产生的任何问题，请在本仓库提 Issue，不要骚扰官方团队
 > 
-> MemOS 官方网站：https://memos.memtensor.cn
+> MemOS 官方 GitHub：https://github.com/MemTensor/MemOS
 
 ---
 
@@ -82,7 +82,7 @@ python uninstall.py
 
 #### 步骤 1：获取 MemOS API Key
 
-1. 访问 https://memos.memtensor.cn
+1. 访问 https://github.com/MemTensor/MemOS
 2. 注册/登录账号
 3. 在 API 控制台创建 API Key（格式：`mpg-xxx`）
 
@@ -253,8 +253,7 @@ python install_lcm.py --uninstall
 
 ### 官方资源
 
-- MemOS 官网：https://memos.memtensor.cn
-- MemOS 文档：https://memos-docs.openmem.net
+- MemOS GitHub：https://github.com/MemTensor/MemOS
 - npm 包：https://www.npmjs.com/package/@memtensor/memos-api-mcp
 
 ### 参考项目

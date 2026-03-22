@@ -97,7 +97,7 @@ copaw restart
 
 ## 🔑 获取 API Key
 
-1. 访问 https://memos.memtensor.cn
+1. 访问 https://github.com/MemTensor/MemOS
 2. 注册/登录账号
 3. 在 API 控制台创建 API Key
 
@@ -105,6 +105,7 @@ copaw restart
 
 ## 📚 官方文档
 
+- **MemOS GitHub**: https://github.com/MemTensor/MemOS
 - **MCP 配置指南**: https://memos-docs.openmem.net/cn/mcp_agent/mcp/guide
 - **Agent 开发指南**: https://memos-docs.openmem.net/cn/mcp_agent/agent/guide
 
