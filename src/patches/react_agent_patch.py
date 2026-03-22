@@ -407,8 +407,10 @@ class CoPawAgent(ToolGuardMixin, ReActAgent):
             from pathlib import Path
 
             # Load MemOS config
+            # Use workspace_dir if available, else fallback to WORKING_DIR
+            memos_working_dir = self._workspace_dir if self._workspace_dir else WORKING_DIR
             memos_config = {}
-            config_path = WORKING_DIR / "active_skills" / "memos-cloud" / "config.json"
+            config_path = memos_working_dir / "active_skills" / "memos-cloud" / "config.json"
             if config_path.exists():
                 try:
                     with open(config_path, "r", encoding="utf-8") as f:
