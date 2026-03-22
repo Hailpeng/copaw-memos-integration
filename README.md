@@ -182,12 +182,13 @@ cp src/memory/memory_manager.py /path/to/copaw/agents/memory/
   "userId": "copaw-user",
   
   "recall": {
-    "memoryLimit": 10,
-    "preferenceLimit": 5,
-    "toolMemoryLimit": 5,
+    "memoryLimit": 9,
+    "preferenceLimit": 6,
+    "toolMemoryLimit": 6,
     "includePreference": true,
     "includeToolMemory": true,
-    "threshold": 0.1,
+    "threshold": 0.45,
+    "maxItemChars": 8000,
     "recallGlobal": true
   },
   
@@ -204,11 +205,43 @@ cp src/memory/memory_manager.py /path/to/copaw/agents/memory/
 
 | 配置项 | 默认值 | 说明 |
 |--------|--------|------|
-| `memoryLimit` | 10 | 每次召回的记忆数量上限 |
-| `preferenceLimit` | 5 | 每次召回的偏好数量上限 |
-| `threshold` | 0.1 | 相似度阈值 |
+| `memoryLimit` | 9 | 每次召回的记忆数量上限 |
+| `preferenceLimit` | 6 | 每次召回的偏好数量上限 |
+| `toolMemoryLimit` | 6 | 每次召回的工具记忆数量上限 |
+| `threshold` | 0.45 | 相似度阈值 |
+| `maxItemChars` | 8000 | 每条记忆最大字符数 |
 | `captureStrategy` | "last_turn" | 捕获策略：last_turn / full_session |
 | `asyncMode` | true | 异步存储，不阻塞主流程 |
+
+> **注意**: 以上默认值与 MemOS OpenClaw Plugin 官方默认值一致
+
+---
+
+## 🧠 上下文管理策略
+
+### MemoryCompactionHook 已禁用
+
+本集成方案**禁用了 Copaw 原生的 `MemoryCompactionHook`**，原因如下：
+
+1. **上下文碎片化问题**: 原生压缩机制不知道哪些是"关键信息"，简单地按时间/位置裁剪
+2. **任务中断**: 压缩后丢失重要上下文，导致任务执行中断
+3. **MemOS 负责上下文统一**: MemOS 通过语义化召回保持上下文连贯性
+
+### 与 MemOS OpenClaw Plugin 一致
+
+原版 MemOS OpenClaw Plugin **没有上下文压缩机制**，完全依靠 MemOS 管理上下文。本集成方案与此保持一致。
+
+### 上下文过长怎么办？
+
+如果遇到上下文过长问题，请调整以下配置：
+
+| 方法 | 配置项 | 说明 |
+|------|--------|------|
+| 减少召回数量 | `memoryLimit` | 降低召回的记忆数量 |
+| 减少偏好数量 | `preferenceLimit` | 降低召回的偏好数量 |
+| 限制记忆大小 | `maxItemChars` | 降低每条记忆最大字符数 |
+
+**不要启用 MemoryCompactionHook**，它会破坏上下文连贯性。
 
 ---
 

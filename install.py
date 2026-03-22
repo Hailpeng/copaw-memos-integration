@@ -105,7 +105,7 @@ def patch_file(filepath: Path, search: str, replace: str, description: str = "")
         color_print(Colors.RED, f"❌ 打补丁失败 {description or filepath.name}: {e}")
         return False
 
-def create_config(api_key: str = "") -> bool:
+def create_config(api_key: str = "", source_dir: Path = None) -> bool:
     """创建配置文件"""
     workspace = get_copaw_workspace()
     config_dir = workspace / "active_skills" / "memos-cloud"
@@ -117,13 +117,43 @@ def create_config(api_key: str = "") -> bool:
     
     config_dir.mkdir(parents=True, exist_ok=True)
     
-    config_content = {
-        "apiKey": api_key or "mpg-YOUR_API_KEY_HERE",
-        "baseUrl": "https://memos.memtensor.cn/api/openmem/v1",
-        "userId": "copaw-user"
-    }
-    
+    # 使用仓库中的默认配置文件
     import json
+    default_config_path = source_dir / "config.json" if source_dir else None
+    
+    if default_config_path and default_config_path.exists():
+        config_content = json.loads(default_config_path.read_text(encoding="utf-8"))
+        if api_key:
+            config_content["apiKey"] = api_key
+    else:
+        config_content = {
+            "apiKey": api_key or "mpg-YOUR_API_KEY_HERE",
+            "baseUrl": "https://memos.memtensor.cn/api/openmem/v1",
+            "userId": "copaw-user",
+            "recall": {
+                "memoryLimit": 9,
+                "preferenceLimit": 6,
+                "toolMemoryLimit": 6,
+                "includePreference": True,
+                "includeToolMemory": True,
+                "threshold": 0.45,
+                "maxItemChars": 8000,
+                "queryPrefix": "",
+                "recallGlobal": True,
+                "knowledgebaseIds": [],
+                "tags": []
+            },
+            "add": {
+                "captureStrategy": "last_turn",
+                "includeAssistant": False,
+                "throttleMs": 0,
+                "maxMessageChars": 2000,
+                "tags": [],
+                "asyncMode": True,
+                "multiAgentMode": False
+            }
+        }
+    
     config_file.write_text(json.dumps(config_content, indent=2, ensure_ascii=False), encoding="utf-8")
     color_print(Colors.GREEN, f"✅ 已创建配置文件: {config_file}")
     
@@ -242,7 +272,7 @@ from .memory_search import (
     
     # 6. 创建配置文件
     color_print(Colors.BLUE, "\n📝 步骤 6: 创建配置文件...")
-    create_config(api_key)
+    create_config(api_key, source_dir)
     
     # 汇总
     color_print(Colors.BLUE, "\n" + "="*50)

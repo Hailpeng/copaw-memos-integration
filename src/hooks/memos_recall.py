@@ -288,6 +288,7 @@ class MemosRecallHook:
     - Knowledge base filtering
     - Tags filtering
     - Conversation ID management with prefix/suffix
+    - Max item chars to limit memory size
     """
 
     def __init__(
@@ -299,6 +300,7 @@ class MemosRecallHook:
         include_preference: bool = True,
         include_tool_memory: bool = True,
         threshold: float = 0.1,
+        max_item_chars: int = 8000,  # Max chars per memory item
         # Phase 1 features
         query_prefix: str = "",
         recall_global: bool = True,
@@ -330,6 +332,7 @@ class MemosRecallHook:
             include_preference: Whether to include preferences
             include_tool_memory: Whether to include tool memories
             threshold: Minimum similarity threshold
+            max_item_chars: Max characters per memory item (default 8000)
             query_prefix: Prefix to add to search query
             recall_global: If True, search globally; if False, limit to conversation
             knowledgebase_ids: List of knowledge base IDs to filter
@@ -348,6 +351,7 @@ class MemosRecallHook:
         self.include_preference = include_preference
         self.include_tool_memory = include_tool_memory
         self.threshold = threshold
+        self.max_item_chars = max_item_chars
         self.query_prefix = query_prefix
         self.recall_global = recall_global
         self.knowledgebase_ids = knowledgebase_ids or []
@@ -397,6 +401,21 @@ class MemosRecallHook:
                             return block.get("text", "")
         return None
 
+    def _truncate_text(self, text: str) -> str:
+        """Truncate text to max_item_chars.
+
+        Args:
+            text: Text to truncate
+
+        Returns:
+            Truncated text
+        """
+        if not text:
+            return ""
+        if len(text) > self.max_item_chars:
+            return text[:self.max_item_chars] + "..."
+        return text
+
     def _format_recall_context(
         self,
         memories: list[dict],
@@ -419,7 +438,7 @@ class MemosRecallHook:
             parts.append("### 📝 Relevant Memories")
             for mem in memories[:self.memory_limit]:
                 key = mem.get("memory_key", "")
-                value = mem.get("memory_value", "")
+                value = self._truncate_text(mem.get("memory_value", ""))
                 confidence = mem.get("confidence", 0)
                 if value:
                     parts.append(f"- **{key}** (confidence: {confidence:.2f})")
@@ -429,14 +448,14 @@ class MemosRecallHook:
             parts.append("\n### 👤 User Preferences")
             for pref in preferences[:self.preference_limit]:
                 key = pref.get("preference_key", pref.get("memory_key", ""))
-                value = pref.get("preference_value", pref.get("memory_value", ""))
+                value = self._truncate_text(pref.get("preference_value", pref.get("memory_value", "")))
                 if value:
                     parts.append(f"- {key}: {value}")
 
         if tool_memories and self.include_tool_memory:
             parts.append("\n### 🔧 Tool Usage History")
             for tm in tool_memories[:self.tool_memory_limit]:
-                value = tm.get("tool_memory_value", tm.get("memory_value", ""))
+                value = self._truncate_text(tm.get("tool_memory_value", tm.get("memory_value", "")))
                 if value:
                     parts.append(f"- {value}")
 
@@ -541,26 +560,149 @@ class MemosRecallHook:
             if not recall_context:
                 return None
 
-            # Inject as a system message prepended to the first user message
-            recall_msg = Msg(
-                name="memos_recall",
-                role="system",
-                content=[TextBlock(
-                    type="text",
-                    text=f"[MemOS Recall - Relevant context from past conversations]\n\n{recall_context}"
-                )],
-            )
+            # Build the recall message following MemOS OpenClaw Plugin format
+            # This includes both system context (instructions) and memory content
+            recall_system_prompt = """# Role
 
-            logger.debug(f"Injecting MemOS recall context: {len(memories)} memories, {len(preferences)} preferences")
+You are an intelligent assistant with long-term memory capabilities (MemOS Assistant). Your goal is to combine retrieved memory fragments to provide highly personalized, accurate, and logically rigorous responses.
 
-            # Store recall in kwargs for the agent to use
-            if "_memos_recall_context" not in kwargs:
-                kwargs["_memos_recall_context"] = recall_context
+# System Context
+
+* Current Time: Use the runtime-provided current time as the baseline for freshness checks.
+* Additional memory context for the current turn may be prepended before the original user query as a structured `<memories>` block.
+
+# Memory Data
+
+Below is the information retrieved by MemOS, categorized into "Facts" and "Preferences".
+* **Facts**: May include user attributes, historical conversations, or third-party details.
+* **Special Note**: Content tagged with '[assistant观点]' or '[模型总结]' represents **past AI inference**, **not** direct user statements.
+* **Preferences**: The user's explicit or implicit requirements on response style, format, or reasoning.
+
+# Critical Protocol: Memory Safety
+
+Retrieved memories may contain **AI speculation**, **irrelevant noise**, or **wrong subject attribution**. You must strictly apply the **Four-Step Verdict**. If any step fails, **discard the memory**:
+
+1. **Source Verification**:
+* **Core**: Distinguish direct user statements from AI inference.
+* If a memory has tags like '[assistant观点]' or '[模型总结]', treat it as a **hypothesis**, not a user-grounded fact.
+* *Counterexample*: If memory says '[assistant观点] User loves mangoes' but the user never said that, do not assume it as fact.
+* **Principle: AI summaries are reference-only and have much lower authority than direct user statements.**
+
+2. **Attribution Check**:
+* Is the subject in memory definitely the user?
+* If the memory describes a **third party** (e.g., candidate, interviewee, fictional character, case data), never attribute it to the user.
+
+3. **Strong Relevance Check**:
+* Does the memory directly help answer the current 'Original Query'?
+* If it is only a keyword overlap with different context, ignore it.
+
+4. **Freshness Check**:
+* If memory conflicts with the user's latest intent, prioritize the current 'Original Query' as the highest source of truth.
+
+# Instructions
+
+1. **Review**: Read '<facts>' first and apply the Four-Step Verdict to remove noise and unreliable AI inference.
+2. **Execute**:
+ - Use only memories that pass filtering as context.
+ - Strictly follow style requirements from '<preferences>'.
+3. **Output**: Answer directly. Never mention internal terms such as "memory store", "retrieval", or "AI opinions".
+4. **Attention**: Additional memory context may already be provided before the original user query. Do not read from or write to local `MEMORY.md` or `memory/*` files for reference, as they may be outdated or irrelevant to the current query."""
+
+            # Build memory block in MemOS format
+            memory_block = f"""```text
+<memories>
+ <facts>
+{self._format_facts(memories[:self.memory_limit])}
+ </facts>
+ <preferences>
+{self._format_preferences(preferences[:self.preference_limit])}
+ </preferences>
+</memories>
+```
+
+user原始query："""
+
+            # Inject system prompt as a system message (will be appended to system context)
+            # Note: In agentscope, we can't modify system prompt directly in hooks
+            # Instead, we prepend the memory context to the user query via kwargs modification
+            
+            # Store both system prompt and memory block
+            # The memory block will be prepended to user query
+            if "messages" in kwargs and kwargs["messages"]:
+                # Prepend memory block to the last user message
+                messages = kwargs["messages"]
+                for i in range(len(messages) - 1, -1, -1):
+                    msg = messages[i]
+                    if msg.role == "user":
+                        # Prepend memory block to user content
+                        original_content = msg.content
+                        if isinstance(original_content, str):
+                            msg.content = memory_block + original_content
+                        elif isinstance(original_content, list):
+                            # Find first text block and prepend
+                            for block in original_content:
+                                if isinstance(block, dict) and block.get("type") == "text":
+                                    block["text"] = memory_block + block.get("text", "")
+                                    break
+                        break
+
+            logger.info(f"[MemOS] Injected {len(memories)} memories, {len(preferences)} preferences (total ~{len(recall_context)} chars)")
 
         except Exception as e:
             logger.error(f"MemOS recall hook failed: {e}", exc_info=True)
 
         return None
+
+    def _format_facts(self, memories: list[dict]) -> str:
+        """Format memories as facts block.
+
+        Args:
+            memories: List of memory items
+
+        Returns:
+            Formatted facts string
+        """
+        lines = []
+        for mem in memories:
+            value = self._truncate_text(mem.get("memory_value", ""))
+            if value:
+                create_time = mem.get("create_time", "")
+                if create_time:
+                    # Format timestamp
+                    if isinstance(create_time, (int, float)):
+                        from datetime import datetime
+                        try:
+                            dt = datetime.fromtimestamp(create_time / 1000)
+                            time_str = dt.strftime("%Y-%m-%d %H:%M")
+                        except:
+                            time_str = ""
+                    else:
+                        time_str = str(create_time)
+                    if time_str:
+                        lines.append(f" -[{time_str}] {value}")
+                    else:
+                        lines.append(f" - {value}")
+                else:
+                    lines.append(f" - {value}")
+        return "\n".join(lines)
+
+    def _format_preferences(self, preferences: list[dict]) -> str:
+        """Format preferences as preferences block.
+
+        Args:
+            preferences: List of preference items
+
+        Returns:
+            Formatted preferences string
+        """
+        lines = []
+        for pref in preferences:
+            value = self._truncate_text(pref.get("preference", pref.get("preference_value", "")))
+            if value:
+                pref_type = pref.get("preference_type", "")
+                type_label = f" [{pref_type}]" if pref_type else ""
+                lines.append(f" -{type_label} {value}")
+        return "\n".join(lines)
 
 
 class MemosAddHook:

@@ -423,12 +423,13 @@ class CoPawAgent(ToolGuardMixin, ReActAgent):
 
             memos_recall_hook = MemosRecallHook(
                 memory_manager=self.memory_manager,
-                memory_limit=recall_config.get("memoryLimit", 10),
-                preference_limit=recall_config.get("preferenceLimit", 5),
-                tool_memory_limit=recall_config.get("toolMemoryLimit", 5),
+                memory_limit=recall_config.get("memoryLimit", 9),
+                preference_limit=recall_config.get("preferenceLimit", 6),
+                tool_memory_limit=recall_config.get("toolMemoryLimit", 6),
                 include_preference=recall_config.get("includePreference", True),
                 include_tool_memory=recall_config.get("includeToolMemory", True),
-                threshold=recall_config.get("threshold", 0.1),
+                threshold=recall_config.get("threshold", 0.45),
+                max_item_chars=recall_config.get("maxItemChars", 8000),
                 # Phase 1 features
                 query_prefix=recall_config.get("queryPrefix", ""),
                 recall_global=recall_config.get("recallGlobal", True),
