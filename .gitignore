@@ -24,36 +24,20 @@ wheels/
 venv/
 ENV/
 env/
-.venv/
 
 # IDE
 .idea/
 .vscode/
 *.swp
 *.swo
-*~
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Backup
-backup/
-*.bak
-
 # Logs
 *.log
 logs/
 
-# Local config (may contain API keys)
-.env
+# Config (users should create their own)
 config.local.json
-
-# Test
-.pytest_cache/
-.coverage
-htmlcov/
-
-# Build
-*.pyc
-*.pyo
