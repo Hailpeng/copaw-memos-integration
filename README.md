@@ -192,6 +192,41 @@ copaw restart
 ```
 INFO: Registered LCM (Lossless Context Management) hook
 INFO: LCM database initialized at ~/.copaw/lcm.db
+INFO: LCM token check: X tokens, threshold=70000
+```
+
+### ⚠️ 重要：Copaw 更新后需要重新安装
+
+**LCM 模块安装在 Copaw 的 site-packages 目录中，`pip install -U copaw` 会覆盖这些文件！**
+
+#### 更新 Copaw 后的步骤
+
+```bash
+# 1. 更新 Copaw
+pip install -U copaw
+
+# 2. 重新安装 LCM
+cd copaw-memos-integration
+python install_lcm.py
+
+# 3. 重启 Copaw
+copaw restart
+```
+
+#### 检查 LCM 状态
+
+```bash
+python install_lcm.py --check
+```
+
+输出示例：
+```
+✅ LCM 模块: D:\PythonEnv\copaw-env\lib\site-packages\copaw\agents\lcm
+✅ LCM Hook: D:\PythonEnv\copaw-env\lib\site-packages\copaw\agents\hooks\lcm_hook.py
+✅ reme 依赖: 已安装
+已安装版本: v0.11
+最新版本: v0.11
+✅ LCM 安装完整，可以正常使用
 ```
 
 ### LCM Agent 工具

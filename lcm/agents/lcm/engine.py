@@ -106,7 +106,7 @@ class LCMEngine:
         
         msg_id = msg.id or str(uuid.uuid4())
         
-        # Extract content
+        # Extract content - include ALL block types for proper token estimation
         content = ""
         content_json = None
         content_type = "text"
@@ -125,10 +125,16 @@ class LCMEngine:
                         text_parts.append(block.get("text", ""))
                     elif block_type == "tool_use":
                         has_tool = True
-                        text_parts.append(f"[Tool: {block.get('name', '?')}]")
+                        tool_name = block.get("name", "?")
+                        tool_args = block.get("input", {})
+                        args_str = str(tool_args)[:1000]
+                        text_parts.append(f"[Tool: {tool_name}] {args_str}")
                     elif block_type == "tool_result":
                         has_tool = True
-                        text_parts.append(f"[Tool Result]")
+                        result = block.get("content", "")
+                        if len(result) > 2000:
+                            result = result[:2000] + "...[truncated]"
+                        text_parts.append(f"[ToolResult] {result}")
                 else:
                     # Try to access as object
                     try:
@@ -175,14 +181,30 @@ class LCMEngine:
         total = 0
         for msg in messages:
             try:
-                # Extract text content
+                # Extract ALL content including tool_use and tool_result
                 if isinstance(msg.content, str):
                     text = msg.content
                 elif isinstance(msg.content, list):
                     text_parts = []
                     for block in msg.content:
-                        if isinstance(block, dict) and block.get("type") == "text":
-                            text_parts.append(block.get("text", ""))
+                        if isinstance(block, dict):
+                            block_type = block.get("type", "")
+                            if block_type == "text":
+                                text_parts.append(block.get("text", ""))
+                            elif block_type == "tool_use":
+                                # Include tool name and arguments
+                                tool_name = block.get("name", "?")
+                                tool_args = block.get("input", {})
+                                # Truncate very long arguments
+                                args_str = str(tool_args)[:1000]
+                                text_parts.append(f"[Tool: {tool_name}] {args_str}")
+                            elif block_type == "tool_result":
+                                # Include tool result content
+                                result = block.get("content", "")
+                                # Truncate very long results
+                                if len(result) > 2000:
+                                    result = result[:2000] + "...[truncated]"
+                                text_parts.append(f"[ToolResult] {result}")
                     text = " ".join(text_parts)
                 else:
                     text = str(msg.content)
@@ -218,6 +240,7 @@ class LCMEngine:
         
         # Count tokens
         if not self.token_counter:
+            logger.warning("LCM: No token_counter available, skipping compaction check")
             return messages, False
         
         try:
@@ -228,6 +251,9 @@ class LCMEngine:
             return messages, False
         
         threshold = int(max_tokens * self.config.context_threshold)
+        
+        # Log token count for debugging
+        logger.info(f"LCM token check: {total_tokens} tokens, threshold={threshold}, max={max_tokens}")
         
         if total_tokens < threshold:
             logger.debug(f"No compaction needed: {total_tokens} < {threshold}")
