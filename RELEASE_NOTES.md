@@ -7,6 +7,12 @@
   - 修复：移除 `id=summary["id"]` 参数
   - 影响：压缩触发后无法生成摘要，导致上下文持续增长
 
+## 改进
+
+- **同步运行环境修复到仓库** - 确保用户安装后功能正常
+  - `config.py`: 添加 `max_input_chars` 字段用于强制压缩
+  - `lcm_hook.py`: 添加 `model_id_for_tokenizer` 支持 tokenizer 选择
+
 ## 技术细节
 
 ### 问题
@@ -63,6 +69,8 @@ python install_lcm.py
 
 ```bash
 copy lcm\agents\lcm\compactor.py D:\PythonEnv\copaw-env\lib\site-packages\copaw\agents\lcm\compactor.py
+copy lcm\agents\lcm\config.py D:\PythonEnv\copaw-env\lib\site-packages\copaw\agents\lcm\config.py
+copy lcm\agents\hooks\lcm_hook.py D:\PythonEnv\copaw-env\lib\site-packages\copaw\agents\hooks\lcm_hook.py
 ```
 
 然后重启 Copaw：

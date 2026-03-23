@@ -101,3 +101,6 @@ class LCMConfig:
             expansion_provider=expansion_provider,
             expansion_model=expansion_model,
         )
+    
+    # Safety cap for input length
+    max_input_chars: int = 202752

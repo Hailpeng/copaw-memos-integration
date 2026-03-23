@@ -64,12 +64,11 @@ class LCMHook:
         if self._config is None:
             self._config = LCMConfig.from_agent_config(agent_config)
         
-        # Get model for summarization using three-level priority:
-        # 1. expansion_model (dedicated LCM model, avoids conflict with main agent)
-        # 2. memory_manager.chat_model
-        # 3. create_model_and_formatter (current session model)
+        # Get model for summarization
+        # Priority: expansion_model > memory_manager.chat_model > create_model_and_formatter
         chat_model = None
         formatter = None
+        model_id_for_tokenizer = ""  # Track which model to use for tokenizer
         
         # First try: Use dedicated expansion model (avoids conflict with main agent model)
         if self._config.expansion_provider and self._config.expansion_model:
@@ -78,6 +77,7 @@ class LCMHook:
                     self._config.expansion_provider,
                     self._config.expansion_model,
                 )
+                model_id_for_tokenizer = self._config.expansion_model
                 logger.info(
                     f"LCM using expansion model: "
                     f"{self._config.expansion_provider}/{self._config.expansion_model}"
@@ -98,7 +98,16 @@ class LCMHook:
             except Exception as e:
                 logger.warning(f"Failed to create model for LCM: {e}")
         
-        token_counter = get_copaw_token_counter(agent_config)
+        # Get model ID from agent config if not set
+        if not model_id_for_tokenizer:
+            try:
+                if agent_config.active_model:
+                    model_id_for_tokenizer = agent_config.active_model.model
+            except Exception:
+                pass
+        
+        # Create token counter with model-specific tokenizer
+        token_counter = get_copaw_token_counter(agent_config, model_id_for_tokenizer)
         
         # Get conversation ID from agent
         conversation_id = getattr(agent, "session_id", None)
