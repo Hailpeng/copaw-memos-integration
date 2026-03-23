@@ -304,8 +304,6 @@ if __name__ == "__main__":
         arg = sys.argv[1]
         if arg == "--uninstall":
             uninstall_lcm()
-        elif arg == "--check":
-            check_installation()
         elif arg == "--force":
             # 强制重新安装
             copaw_path = get_copaw_site_packages()
@@ -316,9 +314,9 @@ if __name__ == "__main__":
         else:
             print(f"未知参数: {arg}")
             print("用法:")
-            print("  python install_lcm.py          # 安装/更新 LCM")
-            print("  python install_lcm.py --check  # 检查安装状态")
+            print("  python install_lcm.py          # 检查并安装/更新 LCM")
             print("  python install_lcm.py --force  # 强制重新安装")
             print("  python install_lcm.py --uninstall  # 卸载 LCM")
     else:
+        # 默认行为：检查 + 安装（智能模式）
         install_lcm()
