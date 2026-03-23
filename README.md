@@ -66,6 +66,57 @@ python uninstall.py
 
 ---
 
+## 🤖 Copaw 自动安装指令
+
+如果你是 Copaw，用户让你安装此仓库，请按以下步骤执行：
+
+### 步骤 1：克隆仓库
+
+```bash
+git clone https://github.com/Hailpeng/copaw-memos-integration.git
+cd copaw-memos-integration
+```
+
+### 步骤 2：安装 reme 依赖
+
+```bash
+pip install reme==1.0.3
+```
+
+### 步骤 3：运行安装脚本
+
+```bash
+python install_lcm.py
+```
+
+### 步骤 4：配置压缩模型环境变量（推荐）
+
+在用户的系统环境变量中设置（Windows）：
+```
+LCM_EXPANSION_MODEL=aliyun-codingplan/glm-4.7
+```
+
+或在用户的 shell 配置文件中设置（Linux/macOS）：
+```bash
+export LCM_EXPANSION_MODEL=aliyun-codingplan/glm-4.7
+```
+
+### 步骤 5：重启 Copaw
+
+```bash
+copaw restart
+```
+
+### 步骤 6：验证安装
+
+日志中应看到：
+```
+INFO: Registered LCM (Lossless Context Management) hook
+INFO: LCM database initialized at ~/.copaw/lcm.db
+```
+
+---
+
 ## 📦 组件一：MemOS MCP（云端记忆）
 
 ### 功能
