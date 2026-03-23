@@ -1,49 +1,49 @@
-# v0.09 - LCM 无损上下文管理
+# Release v0.11 - LCM Token 计数关键 Bug 修复
 
-## 新功能
+## 关键修复 🐛
 
-### 🔧 LCM (Lossless Context Management) 模块
+### Token 计数 Bug（严重）
 
-实现完整的本地上下文管理，解决长对话丢失消息的问题：
+**问题：** `_count_messages_tokens()` 只计算 `text` 块，完全忽略 `tool_use`/`tool_result`，导致 token 计数严重低估，压缩永不触发。
 
-- **SQLite 持久化** - 所有消息存储到 `~/.copaw/lcm.db`，永不丢失
-- **DAG 多层摘要** - 智能压缩结构，保护最近 32 条消息
-- **FTS5 全文搜索** - 支持中文搜索历史
-- **Agent 工具** - `lcm_grep`, `lcm_describe`, `lcm_expand`
-- **阈值触发** - 上下文达到 70% 时自动压缩
+**影响：** 长对话中上下文不断累积，最终超出 API 限制（202752 字符），导致对话崩溃。
 
-### 📦 一键安装脚本
+**修复：** 现在完整计算所有消息块类型，并添加调试日志。
+
+## 问题诊断记录
+
+本次修复基于完整的调试过程，发现问题链：
+
+| 问题 | 原因 | 影响 |
+|------|------|------|
+| `max_input_length` = 99999999999 | 阈值计算错误 | 压缩永不触发 |
+| `reme` 包未安装 | 依赖缺失 | MemoryCompactionHook 不工作 |
+| Token 计数只看 text | 代码 Bug | 计数严重低估 |
+
+## 验证结果
+
+- ✅ 集成测试全部通过
+- ✅ 实际运行成功验证
+- ✅ 日志确认: `LCM token check: X tokens, threshold=70000`
+
+## 新增文档
+
+- `LCM_TROUBLESHOOTING.md` - 完整的故障排除指南
+
+## 升级建议
+
+如果你使用 LCM 模块，强烈建议升级到此版本。
 
 ```bash
-git clone https://github.com/Hailpeng/copaw-memos-integration.git
-cd copaw-memos-integration
-python install_lcm.py
+pip install reme==1.0.3
+# 然后重启 Copaw
 ```
 
-## 架构说明
+## 文件变更
 
-| 组件 | 存储位置 | 用途 |
-|------|----------|------|
-| MemOS MCP | 云端 | 跨会话长期记忆 |
-| LCM 模块 | 本地 SQLite | 会话内上下文管理 |
+- `CHANGELOG.md` - 更新日志
+- `LCM_TROUBLESHOOTING.md` - 新增故障排除指南
 
-## 文件结构
+---
 
-```
-lcm/
-├── agents/
-│   ├── lcm/
-│   │   ├── __init__.py    # 导出接口
-│   │   ├── config.py      # 配置类
-│   │   ├── database.py    # SQLite 持久化
-│   │   ├── engine.py      # 主引擎
-│   │   ├── compactor.py   # DAG 压缩
-│   │   └── tools.py       # Agent 工具
-│   └── hooks/
-│       └── lcm_hook.py    # 集成 Hook
-└── install_lcm.py         # 安装脚本
-```
-
-## 参考项目
-
-- [lossless-claw](https://github.com/Martian-Engineering/lossless-claw) (3.2k stars)
+**完整变更日志:** 查看 [CHANGELOG.md](CHANGELOG.md)

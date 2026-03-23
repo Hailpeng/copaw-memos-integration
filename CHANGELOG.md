@@ -1,5 +1,30 @@
 # 更新日志
 
+## [0.11] - 2026-03-23
+
+### 修复 (关键 Bug)
+
+- **LCM Token 计数 Bug 修复** - `_count_messages_tokens()` 只计算 `text` 块，完全忽略 `tool_use`/`tool_result` 导致 token 计数严重低估，压缩永不触发
+  - 修复位置: `copaw/agents/lcm/engine.py`
+  - 现在完整计算所有消息块类型
+  - 添加调试日志 `LCM token check: X tokens, threshold=Y`
+
+### 问题诊断记录
+
+本次修复基于完整的调试过程，发现问题链：
+
+1. `max_input_length` 设置为 99999999999 → 压缩阈值计算错误
+2. `reme` 包未安装 → `MemoryCompactionHook` 无法工作
+3. `_count_messages_tokens` 只看 text 块 → token 计数严重低估
+
+### 验证结果
+
+- 集成测试: 全部通过 ✅
+- 实际运行: 2026-03-23 成功验证
+- 日志确认: `LCM token check: X tokens, threshold=70000`
+
+---
+
 ## [0.10] - 2026-03-23
 
 ### 变更
