@@ -22,7 +22,7 @@ def get_copaw_path():
         import copaw
         return Path(copaw.__path__[0])
     except ImportError:
-        print("❌ 未找到 Copaw，请确认已安装")
+        print("[X] 未找到 Copaw，请确认已安装")
         return None
 
 
@@ -30,7 +30,7 @@ def remove_file(filepath):
     """删除文件"""
     if filepath.exists():
         filepath.unlink()
-        print(f"  ✅ 删除: {filepath}")
+        print(f"  [OK] 删除: {filepath}")
         return True
     return False
 
@@ -38,7 +38,7 @@ def remove_file(filepath):
 def restore_init_file(init_path, imports_to_remove, exports_to_remove):
     """恢复 __init__.py 文件"""
     if not init_path.exists():
-        print(f"  ⚠️ 文件不存在: {init_path}")
+        print(f"  [!] 文件不存在: {init_path}")
         return False
     
     with open(init_path, 'r', encoding='utf-8') as f:
@@ -62,17 +62,17 @@ def restore_init_file(init_path, imports_to_remove, exports_to_remove):
     if content != original_content:
         with open(init_path, 'w', encoding='utf-8') as f:
             f.write(content)
-        print(f"  ✅ 恢复: {init_path}")
+        print(f"  [OK] 恢复: {init_path}")
         return True
     else:
-        print(f"  ℹ️ 无需修改: {init_path}")
+        print(f"  [i] 无需修改: {init_path}")
         return False
 
 
 def clean_file_content(filepath, patterns_to_remove, description=""):
     """清理文件中的特定内容"""
     if not filepath.exists():
-        print(f"  ⚠️ 文件不存在: {filepath}")
+        print(f"  [!] 文件不存在: {filepath}")
         return False
     
     with open(filepath, 'r', encoding='utf-8') as f:
@@ -90,10 +90,10 @@ def clean_file_content(filepath, patterns_to_remove, description=""):
     if content != original_content:
         with open(filepath, 'w', encoding='utf-8') as f:
             f.write(content)
-        print(f"  ✅ 清理: {filepath} {description}")
+        print(f"  [OK] 清理: {filepath} {description}")
         return True
     else:
-        print(f"  ℹ️ 无需修改: {filepath} {description}")
+        print(f"  [i] 无需修改: {filepath} {description}")
         return False
 
 
@@ -102,7 +102,7 @@ def clean_memory_manager(copaw_path):
     filepath = copaw_path / "agents" / "memory" / "memory_manager.py"
     
     if not filepath.exists():
-        print(f"  ⚠️ 文件不存在: {filepath}")
+        print(f"  [!] 文件不存在: {filepath}")
         return
     
     with open(filepath, 'r', encoding='utf-8') as f:
@@ -111,7 +111,6 @@ def clean_memory_manager(copaw_path):
     original_content = content
     
     # 1. 删除 MemOSClient 类定义
-    # 找到 class MemOSClient: 到下一个 class 或文件末尾
     pattern = r'class MemOSClient:.*?(?=\nclass |\Z)'
     content = re.sub(pattern, '', content, flags=re.DOTALL)
     
@@ -157,9 +156,9 @@ def clean_memory_manager(copaw_path):
     if content != original_content:
         with open(filepath, 'w', encoding='utf-8') as f:
             f.write(content)
-        print(f"  ✅ 清理: {filepath}")
+        print(f"  [OK] 清理: {filepath}")
     else:
-        print(f"  ℹ️ 无需修改: {filepath}")
+        print(f"  [i] 无需修改: {filepath}")
 
 
 def clean_react_agent(copaw_path):
@@ -167,7 +166,7 @@ def clean_react_agent(copaw_path):
     filepath = copaw_path / "agents" / "react_agent.py"
     
     if not filepath.exists():
-        print(f"  ⚠️ 文件不存在: {filepath}")
+        print(f"  [!] 文件不存在: {filepath}")
         return
     
     with open(filepath, 'r', encoding='utf-8') as f:
@@ -182,7 +181,6 @@ def clean_react_agent(copaw_path):
     content = re.sub(r', create_memory_add_tool', '', content)
     
     # 2. 删除 memory_add 工具注册代码块
-    # 查找并删除注册 memory_add 的代码
     patterns = [
         r'# Register memory_add.*?logger\.debug\("Registered memory_add tool"\)\n',
         r'if self\._enable_memory_manager and self\.memory_manager.*?create_memory_add_tool\(self\.memory_manager\).*?\n',
@@ -198,14 +196,14 @@ def clean_react_agent(copaw_path):
     if content != original_content:
         with open(filepath, 'w', encoding='utf-8') as f:
             f.write(content)
-        print(f"  ✅ 清理: {filepath}")
+        print(f"  [OK] 清理: {filepath}")
     else:
-        print(f"  ℹ️ 无需修改: {filepath}")
+        print(f"  [i] 无需修改: {filepath}")
 
 
 def main():
     print("=" * 60)
-    print("🗑️  MemOS 硬编码集成卸载脚本 v2.0")
+    print("[DELETE] MemOS 硬编码集成卸载脚本 v2.0")
     print("=" * 60)
     print()
     
@@ -214,17 +212,17 @@ def main():
     if not copaw_path:
         sys.exit(1)
     
-    print(f"📍 Copaw 路径: {copaw_path}")
+    print(f"[-] Copaw 路径: {copaw_path}")
     print()
     
     # 1. 删除 memos_recall.py (如果存在)
-    print("📦 步骤 1: 删除 MemOS Hook 文件")
+    print("[*] 步骤 1: 删除 MemOS Hook 文件")
     hooks_dir = copaw_path / "agents" / "hooks"
     remove_file(hooks_dir / "memos_recall.py")
     
     # 2. 恢复 hooks/__init__.py
     print()
-    print("📦 步骤 2: 恢复 hooks/__init__.py")
+    print("[*] 步骤 2: 恢复 hooks/__init__.py")
     restore_init_file(
         hooks_dir / "__init__.py",
         imports_to_remove=[
@@ -239,13 +237,13 @@ def main():
     
     # 3. 删除 memory_search.py (整个文件都是 MemOS 工具)
     print()
-    print("📦 步骤 3: 删除 tools/memory_search.py")
+    print("[*] 步骤 3: 删除 tools/memory_search.py")
     tools_dir = copaw_path / "agents" / "tools"
     remove_file(tools_dir / "memory_search.py")
     
     # 4. 恢复 tools/__init__.py
     print()
-    print("📦 步骤 4: 恢复 tools/__init__.py")
+    print("[*] 步骤 4: 恢复 tools/__init__.py")
     restore_init_file(
         tools_dir / "__init__.py",
         imports_to_remove=[
@@ -273,17 +271,17 @@ def main():
     
     # 5. 清理 memory_manager.py
     print()
-    print("📦 步骤 5: 清理 memory/memory_manager.py (移除 MemOSClient)")
+    print("[*] 步骤 5: 清理 memory/memory_manager.py (移除 MemOSClient)")
     clean_memory_manager(copaw_path)
     
     # 6. 清理 react_agent.py
     print()
-    print("📦 步骤 6: 清理 react_agent.py (移除 memory_add 注册)")
+    print("[*] 步骤 6: 清理 react_agent.py (移除 memory_add 注册)")
     clean_react_agent(copaw_path)
     
     # 7. 删除本地配置文件
     print()
-    print("📦 步骤 7: 删除本地配置文件")
+    print("[*] 步骤 7: 删除本地配置文件")
     workspace_dir = Path.home() / ".copaw" / "workspaces" / "default"
     
     dirs_to_remove = [
@@ -299,7 +297,7 @@ def main():
     for d in dirs_to_remove:
         if d.exists():
             shutil.rmtree(d)
-            print(f"  ✅ 删除目录: {d}")
+            print(f"  [OK] 删除目录: {d}")
     
     files_to_remove = [
         workspace_dir / "MEMOS_INTEGRATION_TASKS.md",
@@ -310,16 +308,16 @@ def main():
     
     print()
     print("=" * 60)
-    print("✅ 卸载完成！")
+    print("[OK] 卸载完成！")
     print("=" * 60)
     print()
-    print("📋 下一步：配置官方 MCP 方式")
+    print("[i] 下一步：配置官方 MCP 方式")
     print()
     print("1. 编辑 ~/.copaw/workspaces/default/agent.json")
     print("2. 在 mcp.clients 中添加 memos 配置")
     print("3. 重启 Copaw: copaw restart")
     print()
-    print("📖 详细说明: https://github.com/Hailpeng/copaw-memos-integration")
+    print("[?] 详细说明: https://github.com/Hailpeng/copaw-memos-integration")
     print()
 
 
