@@ -1,5 +1,21 @@
 # 更新日志
 
+## [0.12] - 2026-03-23
+
+### 新增
+
+- **LCM 版本检查功能**
+  - `python install_lcm.py --check` 检查安装状态
+  - `python install_lcm.py --force` 强制重新安装
+  - 自动检测是否需要更新
+
+### 文档
+
+- **README 更新** - 添加 Copaw 更新后重新安装的重要提示
+- 明确说明 `pip install -U copaw` 会覆盖 LCM 模块
+
+---
+
 ## [0.11] - 2026-03-23
 
 ### 修复 (关键 Bug)
