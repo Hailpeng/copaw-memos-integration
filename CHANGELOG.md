@@ -1,5 +1,40 @@
 # 更新日志
 
+## [0.14] - 2026-03-23
+
+### 新增
+
+- **自动清理旧的 MemOS 硬编码集成** - 安装 LCM 前自动检测并清理
+  - 删除 `memory_search.py`（整个文件都是 MemOS 工具）
+  - 清理 `memory_manager.py` 中的 `MemOSClient` 类和相关方法
+  - 清理 `react_agent.py` 中的 `memory_add` 工具注册
+  - 更新 `tools/__init__.py` 移除相关导出
+
+### 原因
+
+迁移到 MCP 方式后，Copaw 源码中仍残留旧的硬编码 MemOS 代码，导致：
+- `memory_add` 等工具检查错误的配置路径
+- 与 MCP 工具 `search_memory`/`add_message` 混淆
+- 日志显示 "MemOS Cloud not configured" 误导用户
+
+### 迁移指南
+
+如果之前通过本项目安装过硬编码集成，请先运行：
+
+```bash
+python uninstall.py
+```
+
+然后再安装 LCM：
+
+```bash
+python install_lcm.py
+```
+
+**新用户直接运行 `python install_lcm.py` 即可，会自动清理。**
+
+---
+
 ## [0.13] - 2026-03-23
 
 ### 新增

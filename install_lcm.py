@@ -11,18 +11,132 @@
 - Agent 工具：lcm_grep, lcm_describe, lcm_expand
 
 ⚠️ 重要提示：
+- 安装前会自动清理旧的硬编码 MemOS 集成
 - Copaw 更新（pip install -U copaw）会覆盖 LCM 模块
 - 更新后请重新运行此脚本：python install_lcm.py
 - 或使用 --check 检查是否需要重新安装
 """
 import os
 import sys
+import re
 import shutil
 from pathlib import Path
 
 # LCM 版本号 - 与 CHANGELOG.md 保持同步
-LCM_VERSION = "0.13"
+LCM_VERSION = "0.14"
 LCM_VERSION_FILE = "lcm_version.txt"
+
+
+def clean_legacy_memos_integration(copaw_path: Path):
+    """清理旧的硬编码 MemOS 集成代码
+    
+    迁移到 MCP 方式后，需要删除内置的 memory_add 等工具。
+    这些代码会与 MCP 工具冲突。
+    """
+    print("\n🔍 检查旧的 MemOS 硬编码集成...")
+    
+    # 检查是否需要清理
+    memory_manager = copaw_path / "agents" / "memory" / "memory_manager.py"
+    memory_search = copaw_path / "agents" / "tools" / "memory_search.py"
+    
+    needs_cleanup = False
+    
+    if memory_manager.exists():
+        content = memory_manager.read_text(encoding="utf-8")
+        if "MemOSClient" in content or "memos_enabled" in content:
+            needs_cleanup = True
+            print("  ⚠️ 发现 MemOSClient 类 (memory_manager.py)")
+    
+    if memory_search.exists():
+        content = memory_search.read_text(encoding="utf-8")
+        if "memory_add" in content or "memos_enabled" in content:
+            needs_cleanup = True
+            print("  ⚠️ 发现 memory_add 工具 (memory_search.py)")
+    
+    if not needs_cleanup:
+        print("  ✅ 无需清理，未发现旧的 MemOS 集成")
+        return
+    
+    print("\n🧹 开始清理旧的 MemOS 集成...")
+    
+    # 1. 删除 memory_search.py (整个文件都是 MemOS 工具)
+    tools_dir = copaw_path / "agents" / "tools"
+    if memory_search.exists():
+        memory_search.unlink()
+        print(f"  ✅ 删除: {memory_search}")
+    
+    # 2. 清理 tools/__init__.py
+    tools_init = tools_dir / "__init__.py"
+    if tools_init.exists():
+        content = tools_init.read_text(encoding="utf-8")
+        # 移除 memory_search 相关导入
+        patterns = [
+            r'from \.memory_search import \(.*?\)\n',
+            r'from \.memory_search import.*?\n',
+            r'"create_memory_search_tool",?\s*',
+            r'"create_memory_add_tool",?\s*',
+            r'"create_memory_feedback_tool",?\s*',
+            r'"create_memory_get_tool",?\s*',
+            r'"create_memory_delete_tool",?\s*',
+        ]
+        for p in patterns:
+            content = re.sub(p, '', content, flags=re.DOTALL)
+        tools_init.write_text(content, encoding="utf-8")
+        print(f"  ✅ 清理: {tools_init}")
+    
+    # 3. 清理 memory_manager.py
+    if memory_manager.exists():
+        content = memory_manager.read_text(encoding="utf-8")
+        original = content
+        
+        # 删除 MemOSClient 类
+        content = re.sub(r'class MemOSClient:.*?(?=\nclass |\Z)', '', content, flags=re.DOTALL)
+        
+        # 删除 _memos_client 相关
+        content = re.sub(r'self\._memos_client: Optional\[MemOSClient\] = None\n', '', content)
+        content = re.sub(r'self\._init_memos_client\(\)\n', '', content)
+        
+        # 删除 _init_memos_client 方法
+        content = re.sub(r'    def _init_memos_client\(self\).*?(?=\n    def |\n    @property|\Z)', '', content, flags=re.DOTALL)
+        
+        # 删除 memos_enabled 属性
+        content = re.sub(r'    @property\n    def memos_enabled\(self\).*?(?=\n    @property|\n    def |\Z)', '', content, flags=re.DOTALL)
+        
+        # 删除 memory_add 等方法
+        for method in ['memory_add', 'memory_search', 'memory_feedback', 'memory_get', 'memory_delete']:
+            content = re.sub(rf'    async def {method}\(self,.*?(?=\n    async def |\n    def |\n    @property|\Z)', '', content, flags=re.DOTALL)
+        
+        # 删除 MemOSClient 导入
+        content = re.sub(r'from .*? import .*?MemOSClient.*?\n', '', content)
+        content = re.sub(r', MemOSClient', '', content)
+        
+        # 清理多余空行
+        content = re.sub(r'\n{4,}', '\n\n\n', content)
+        
+        if content != original:
+            memory_manager.write_text(content, encoding="utf-8")
+            print(f"  ✅ 清理: {memory_manager}")
+    
+    # 4. 清理 react_agent.py
+    react_agent = copaw_path / "agents" / "react_agent.py"
+    if react_agent.exists():
+        content = react_agent.read_text(encoding="utf-8")
+        original = content
+        
+        # 删除 create_memory_add_tool 导入
+        content = re.sub(r', create_memory_add_tool', '', content)
+        content = re.sub(r'create_memory_add_tool,\n', '', content)
+        
+        # 删除 memory_add 工具注册
+        content = re.sub(r'# Register memory_add.*?logger\.debug\("Registered memory_add tool"\)\n', '', content, flags=re.DOTALL)
+        content = re.sub(r'if self\._enable_memory_manager and self\.memory_manager.*?create_memory_add_tool.*?\n', '', content, flags=re.DOTALL)
+        content = re.sub(r'and self\.memory_manager\.memos_enabled', '', content)
+        
+        if content != original:
+            react_agent.write_text(content, encoding="utf-8")
+            print(f"  ✅ 清理: {react_agent}")
+    
+    print("  ✅ 旧的 MemOS 集成已清理")
 
 
 def get_copaw_site_packages() -> Path:
@@ -78,6 +192,9 @@ def install_lcm():
     
     print(f"\nCopaw 安装目录: {copaw_path}")
     
+    # 步骤 0: 清理旧的 MemOS 硬编码集成
+    clean_legacy_memos_integration(copaw_path)
+    
     # 检查是否已安装
     if check_lcm_installed(copaw_path):
         installed_version = get_installed_version(copaw_path)
@@ -100,7 +217,7 @@ def install_lcm():
     backup_dir = copaw_path / "agents" / "lcm_backup"
     
     # 安装 LCM 模块
-    print(f"\n[1/5] 安装 LCM 模块...")
+    print(f"\n[1/6] 安装 LCM 模块...")
     if lcm_dst.exists():
         print(f"  备份原有文件到: {backup_dir}")
         shutil.copytree(lcm_dst, backup_dir, dirs_exist_ok=True)
@@ -116,7 +233,7 @@ def install_lcm():
     print(f"  ✅ LCM 模块已安装到: {lcm_dst}")
     
     # 安装 Hook
-    print(f"\n[2/5] 安装 LCM Hook...")
+    print(f"\n[2/6] 安装 LCM Hook...")
     hook_dst.parent.mkdir(parents=True, exist_ok=True)
     if hook_dst.exists():
         hook_dst.unlink()
