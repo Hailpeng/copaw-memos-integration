@@ -213,6 +213,20 @@ class LCMEngine:
         
         threshold = int(max_tokens * self.config.context_threshold)
         
+        # Force compression if input exceeds max_input_chars
+        full_text = ""
+        try:
+            for m in messages:
+                full_text += self._blocks_to_text(m.content) + " "
+        except Exception:
+            full_text = ""
+        char_len = len(full_text)
+        max_chars = getattr(self.config, "max_input_chars", 202752)
+        if char_len > max_chars:
+            logger.info(f"LCM: input length {char_len} exceeds max_input_chars {max_chars}, forcing compression")
+            async with self._compaction_lock:
+                return await self._do_compaction(messages, max_tokens)
+        
         # Log token count for debugging
         logger.info(f"LCM token check: {total_tokens} tokens, threshold={threshold}, max={max_tokens}")
         

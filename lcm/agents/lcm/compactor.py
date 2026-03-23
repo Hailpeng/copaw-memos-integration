@@ -129,7 +129,7 @@ class DAGCompactor:
             name="system",
             role="system",
             content=[TextBlock(type="text", text=f"[Context Summary]\n{summary['content']}")],
-            id=summary["id"],
+            # Note: Msg doesn't accept 'id' parameter, summary id is stored in DB
         )
         result.append(summary_msg)
         

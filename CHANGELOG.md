@@ -1,5 +1,22 @@
 # 更新日志
 
+## [0.14.2] - 2026-03-24
+
+### 修复
+
+- **LCM 压缩执行失败** - `compactor.py` 中 `Msg` 对象不支持 `id` 参数
+  - 错误：`TypeError: Msg.__init__() got an unexpected keyword argument 'id'`
+  - 修复：移除 `id=summary["id"]` 参数，summary ID 仅存储在数据库中
+  - 影响：压缩触发后无法生成摘要，导致上下文持续增长
+
+### 验证
+
+- 压缩触发：✅ token 超过阈值时正确触发
+- 压缩执行：✅ 100 条消息压缩至 33 条
+- Summaries 存储：✅ 正确写入数据库
+
+---
+
 ## [0.14.1] - 2026-03-23
 
 ### 修复
