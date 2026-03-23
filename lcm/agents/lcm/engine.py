@@ -78,6 +78,31 @@ class LCMEngine:
         self._compaction_lock = asyncio.Lock()
         self._last_compaction_tokens = 0
     
+    def _blocks_to_text(self, blocks: list) -> str:
+        """Serialize blocks to a plain text representation for token counting."""
+        text_parts = []
+        if isinstance(blocks, list):
+            for block in blocks:
+                if isinstance(block, dict):
+                    block_type = block.get("type", "")
+                    if block_type == "text":
+                        text_parts.append(block.get("text", ""))
+                    elif block_type == "tool_use":
+                        tool_name = block.get("name", "?")
+                        tool_args = block.get("input", {})
+                        args_str = str(tool_args)[:1000]
+                        text_parts.append(f"[Tool: {tool_name}] {args_str}")
+                    elif block_type == "tool_result":
+                        result = block.get("content", "")
+                        if isinstance(result, str) and len(result) > 2000:
+                            result = result[:2000] + "...[truncated]"
+                        text_parts.append(f"[ToolResult] {result}")
+                else:
+                    text_parts.append(str(block))
+        else:
+            text_parts.append(str(blocks))
+        return " ".join(text_parts)
+    
     async def initialize(self) -> None:
         """Initialize the engine (create database tables, etc.)."""
         await self.db.initialize()
@@ -101,63 +126,24 @@ class LCMEngine:
         logger.debug(f"Ingested {len(messages)} messages into LCM")
     
     async def _ingest_message(self, msg: Msg) -> None:
-        """Ingest a single message."""
-        from agentscope.message import TextBlock, ToolUseBlock, ToolResultBlock
-        
+        """Ingest a single message, serializing content blocks for storage and token estimation."""
         msg_id = msg.id or str(uuid.uuid4())
-        
-        # Extract content - include ALL block types for proper token estimation
-        content = ""
-        content_json = None
-        content_type = "text"
-        
-        if isinstance(msg.content, str):
-            content = msg.content
-        elif isinstance(msg.content, list):
-            text_parts = []
-            has_tool = False
-            
-            for block in msg.content:
-                # Handle TypedDict-style blocks
-                if isinstance(block, dict):
-                    block_type = block.get("type", "")
-                    if block_type == "text":
-                        text_parts.append(block.get("text", ""))
-                    elif block_type == "tool_use":
-                        has_tool = True
-                        tool_name = block.get("name", "?")
-                        tool_args = block.get("input", {})
-                        args_str = str(tool_args)[:1000]
-                        text_parts.append(f"[Tool: {tool_name}] {args_str}")
-                    elif block_type == "tool_result":
-                        has_tool = True
-                        result = block.get("content", "")
-                        if len(result) > 2000:
-                            result = result[:2000] + "...[truncated]"
-                        text_parts.append(f"[ToolResult] {result}")
-                else:
-                    # Try to access as object
-                    try:
-                        if hasattr(block, 'type') and block.type == "text":
-                            text_parts.append(block.text if hasattr(block, 'text') else str(block))
-                        elif hasattr(block, 'name'):
-                            has_tool = True
-                            text_parts.append(f"[Tool: {block.name}]")
-                    except Exception:
-                        text_parts.append(str(block))
-            
-            content = "\n".join(text_parts)
+        try:
+            content = self._blocks_to_text(msg.content)
+            content_type = "tool" if ("[Tool:" in content or "[ToolResult]" in content) else "text"
             content_json = msg.model_dump_json() if hasattr(msg, 'model_dump_json') else str(msg.content)
-            content_type = "tool" if has_tool else "text"
-        
+        except Exception:
+            # Fallback to legacy path on error
+            content = "" if not isinstance(msg.content, str) else msg.content
+            content_type = "text"
+            content_json = msg.model_dump_json() if hasattr(msg, 'model_dump_json') else str(msg.content)
         # Estimate token count
         token_count = 0
         if self.token_counter:
             try:
                 token_count = await self.token_counter.count(messages=[], text=content)
             except Exception:
-                token_count = len(content) // 4  # Rough estimate
-        
+                token_count = len(content) // 4
         await self.db.add_message(
             message_id=msg_id,
             conversation_id=self.conversation_id,
@@ -174,52 +160,27 @@ class LCMEngine:
         
         Args:
             messages: Messages to count
-            
+             
         Returns:
             Total token count
         """
         total = 0
         for msg in messages:
             try:
-                # Extract ALL content including tool_use and tool_result
                 if isinstance(msg.content, str):
                     text = msg.content
-                elif isinstance(msg.content, list):
-                    text_parts = []
-                    for block in msg.content:
-                        if isinstance(block, dict):
-                            block_type = block.get("type", "")
-                            if block_type == "text":
-                                text_parts.append(block.get("text", ""))
-                            elif block_type == "tool_use":
-                                # Include tool name and arguments
-                                tool_name = block.get("name", "?")
-                                tool_args = block.get("input", {})
-                                # Truncate very long arguments
-                                args_str = str(tool_args)[:1000]
-                                text_parts.append(f"[Tool: {tool_name}] {args_str}")
-                            elif block_type == "tool_result":
-                                # Include tool result content
-                                result = block.get("content", "")
-                                # Truncate very long results
-                                if len(result) > 2000:
-                                    result = result[:2000] + "...[truncated]"
-                                text_parts.append(f"[ToolResult] {result}")
-                    text = " ".join(text_parts)
                 else:
-                    text = str(msg.content)
-                
-                if self.token_counter:
-                    try:
-                        count = await self.token_counter.count(messages=[], text=text)
-                        total += count
-                    except Exception:
-                        total += len(text) // 4  # Fallback estimate
-                else:
-                    total += len(text) // 4
+                    text = self._blocks_to_text(msg.content)
             except Exception:
-                total += 100  # Default estimate per message
-        
+                text = str(msg.content)
+            if self.token_counter:
+                try:
+                    count = await self.token_counter.count(messages=[], text=text)
+                    total += count
+                except Exception:
+                    total += len(text) // 4
+            else:
+                total += len(text) // 4
         return total
     
     async def check_and_compact(
