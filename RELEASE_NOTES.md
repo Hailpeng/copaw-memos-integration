@@ -13,6 +13,21 @@
   - `config.py`: 添加 `max_input_chars` 字段用于强制压缩
   - `lcm_hook.py`: 添加 `model_id_for_tokenizer` 支持 tokenizer 选择
 
+- **README 新增 Copaw 自动安装指令** - Copaw 可直接按步骤执行安装
+
+## 安装方式
+
+用户对 Copaw 说：
+
+> "帮我配置完整的记忆架构，仓库地址：https://github.com/Hailpeng/copaw-memos-integration"
+
+Copaw 将自动执行：
+1. 克隆仓库
+2. 安装 reme 依赖
+3. 运行安装脚本
+4. 配置环境变量
+5. 重启 Copaw
+
 ## 技术细节
 
 ### 问题
@@ -52,37 +67,6 @@ summary_msg = Msg(
 | 压缩触发 | ✅ 71,191 tokens >= 70,000 threshold |
 | 压缩执行 | ✅ 100 -> 33 messages |
 | Summaries 存储 | ✅ 2 条写入数据库 |
-
-## 升级指南
-
-### 方法 1: 重新安装（推荐）
-
-```bash
-cd D:\PythonEnv\copaw-memos-integration
-git pull origin main
-python install_lcm.py
-```
-
-### 方法 2: 手动替换
-
-仅替换修复的文件：
-
-```bash
-copy lcm\agents\lcm\compactor.py D:\PythonEnv\copaw-env\lib\site-packages\copaw\agents\lcm\compactor.py
-copy lcm\agents\lcm\config.py D:\PythonEnv\copaw-env\lib\site-packages\copaw\agents\lcm\config.py
-copy lcm\agents\hooks\lcm_hook.py D:\PythonEnv\copaw-env\lib\site-packages\copaw\agents\hooks\lcm_hook.py
-```
-
-然后重启 Copaw：
-
-```bash
-copaw restart
-```
-
-## 相关 Issue
-
-- LCM 压缩在阈值触发后无法执行
-- 上下文持续增长导致 API 报错 `Range of input length should be [1, 202752]`
 
 ---
 
