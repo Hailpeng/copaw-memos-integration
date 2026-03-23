@@ -23,7 +23,7 @@ import shutil
 from pathlib import Path
 
 # LCM 版本号 - 与 CHANGELOG.md 保持同步
-LCM_VERSION = "0.14"
+LCM_VERSION = "0.14.1"
 LCM_VERSION_FILE = "lcm_version.txt"
 
 

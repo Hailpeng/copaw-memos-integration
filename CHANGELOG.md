@@ -1,5 +1,23 @@
 # 更新日志
 
+## [0.14.1] - 2026-03-23
+
+### 修复
+
+- **Windows GBK 编码问题** - 移除 `uninstall.py` 中的所有 emoji
+  - 替换为 ASCII 兼容的文本：`[OK]`, `[X]`, `[!]`, `[i]` 等
+  - 确保脚本在 Windows 默认控制台上正常运行
+
+### 原因
+
+Windows 默认使用 GBK 编码，无法显示 Unicode emoji。用户克隆仓库后运行 `python uninstall.py` 会报：
+
+```
+UnicodeEncodeError: 'gbk' codec can't encode character '\U0001f5d1'
+```
+
+---
+
 ## [0.14] - 2026-03-23
 
 ### 新增
