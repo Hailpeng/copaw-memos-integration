@@ -12,6 +12,7 @@ from agentscope.message import Msg, TextBlock
 
 from copaw.config.config import load_agent_config
 from copaw.agents.utils import get_copaw_token_counter
+from copaw.agents.model_factory import create_model_and_formatter, create_model_by_slot
 
 from ..lcm import LCMEngine, LCMConfig
 
@@ -63,9 +64,40 @@ class LCMHook:
         if self._config is None:
             self._config = LCMConfig.from_agent_config(agent_config)
         
-        # Get model for summarization
-        chat_model = getattr(self.memory_manager, "chat_model", None)
-        formatter = getattr(self.memory_manager, "formatter", None)
+        # Get model for summarization using three-level priority:
+        # 1. expansion_model (dedicated LCM model, avoids conflict with main agent)
+        # 2. memory_manager.chat_model
+        # 3. create_model_and_formatter (current session model)
+        chat_model = None
+        formatter = None
+        
+        # First try: Use dedicated expansion model (avoids conflict with main agent model)
+        if self._config.expansion_provider and self._config.expansion_model:
+            try:
+                chat_model, formatter = create_model_by_slot(
+                    self._config.expansion_provider,
+                    self._config.expansion_model,
+                )
+                logger.info(
+                    f"LCM using expansion model: "
+                    f"{self._config.expansion_provider}/{self._config.expansion_model}"
+                )
+            except Exception as e:
+                logger.warning(f"Failed to create expansion model: {e}")
+        
+        # Second try: Use memory_manager's chat_model
+        if chat_model is None:
+            chat_model = getattr(self.memory_manager, "chat_model", None)
+            formatter = getattr(self.memory_manager, "formatter", None)
+        
+        # Third try: Create from agent config (uses current session model)
+        if chat_model is None:
+            try:
+                chat_model, formatter = create_model_and_formatter(self.agent_id)
+                logger.info("LCM using current session model for summarization")
+            except Exception as e:
+                logger.warning(f"Failed to create model for LCM: {e}")
+        
         token_counter = get_copaw_token_counter(agent_config)
         
         # Get conversation ID from agent
@@ -141,9 +173,24 @@ class LCMHook:
                 )
                 
                 # Update agent memory with compacted messages
-                # This would require access to the memory manager's update method
-                # For now, we just log
-                logger.info(f"LCM compacted {len(messages)} -> {len(compacted)} messages")
+                # Clear old messages and add compacted ones
+                try:
+                    await memory.clear()
+                    for msg in compacted:
+                        await memory.add(msg)
+                    logger.info(f"LCM updated memory: {len(messages)} -> {len(compacted)} messages")
+                except Exception as update_error:
+                    logger.error(f"Failed to update memory after compaction: {update_error}")
+                    # Try alternative: update compressed summary
+                    try:
+                        summary_text = "\n".join([
+                            f"[{m.role}]: {m.content if isinstance(m.content, str) else str(m.content)[:200]}"
+                            for m in compacted[:5]  # Use first 5 as summary
+                        ])
+                        await memory.update_compressed_summary(summary_text)
+                        logger.info(f"LCM updated compressed summary instead")
+                    except Exception as summary_error:
+                        logger.error(f"Failed to update compressed summary: {summary_error}")
             
             return None
             

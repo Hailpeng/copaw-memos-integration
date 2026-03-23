@@ -1,5 +1,57 @@
 # 更新日志
 
+## [0.13] - 2026-03-23
+
+### 新增
+
+- **次选压缩模型机制** - 避免 LCM 压缩与主模型并发冲突
+  - 新增配置字段: `expansion_provider`, `expansion_model`
+  - 环境变量配置: `LCM_EXPANSION_MODEL=provider/model`
+  - 示例: `LCM_EXPANSION_MODEL=aliyun-codingplan/glm-4.7`
+
+- **三级优先级模型选择**
+  1. expansion_model (专用 LCM 模型)
+  2. memory_manager.chat_model
+  3. create_model_and_formatter (当前会话模型)
+
+- **create_model_by_slot 函数** - model_factory.py 扩展
+  - 按指定 provider/model 创建模型实例
+  - 用于次选压缩模型创建
+
+### 修复
+
+- **lcm_hook.py 异步调用修复**
+  - `memory.clear()` → `await memory.clear()`
+  - `memory.add(msg)` → `await memory.add(msg)`
+  - `memory.update_compressed_summary()` → `await memory.update_compressed_summary()`
+
+### 安装脚本优化
+
+- 新增 `[4/6] 更新 model_factory.py` 步骤
+- 自动合并 `create_model_by_slot` 函数到 Copaw 源码
+
+### 配置示例
+
+```bash
+# .env 或环境变量
+LCM_EXPANSION_MODEL=aliyun-codingplan/glm-4.7
+```
+
+```json
+// 或在 config.py 中直接设置
+expansion_provider: "aliyun-codingplan"
+expansion_model: "glm-4.7"
+```
+
+### 验证日志
+
+```
+LCM using expansion model: aliyun-codingplan/glm-4.7
+LCM token check: 8485 tokens, threshold=70000, max=100000
+```
+
+---
+
 ## [0.12] - 2026-03-23
 
 ### 新增

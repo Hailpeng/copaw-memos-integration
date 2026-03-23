@@ -3,6 +3,7 @@
 
 Configuration parameters for Lossless Context Management.
 """
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
@@ -25,6 +26,8 @@ class LCMConfig:
         max_expand_tokens: Token cap for expansion queries
         summary_provider: Provider override for summarization (empty = use main model)
         summary_model: Model override for summarization (empty = use main model)
+        expansion_provider: Secondary provider for LCM when main model is busy
+        expansion_model: Secondary model for LCM when main model is busy
         enable_fts: Enable FTS5 full-text search
     """
     # Database
@@ -48,6 +51,8 @@ class LCMConfig:
     # Model settings
     summary_provider: str = ""
     summary_model: str = ""
+    expansion_provider: str = ""
+    expansion_model: str = ""
     
     # Search
     enable_fts: bool = True
@@ -80,7 +85,19 @@ class LCMConfig:
             # Use embedding provider for summaries (usually cheaper)
             pass
         
+        # Read expansion model from environment variables
+        # Format: LCM_EXPANSION_MODEL=provider/model (e.g., "aliyun-codingplan/glm-4.7")
+        expansion_provider = ""
+        expansion_model = ""
+        expansion_env = os.environ.get("LCM_EXPANSION_MODEL", "")
+        if expansion_env and "/" in expansion_env:
+            parts = expansion_env.split("/", 1)
+            expansion_provider = parts[0]
+            expansion_model = parts[1]
+        
         return cls(
             context_threshold=running.memory_compact_ratio,
             db_path=str(Path.home() / ".copaw" / "lcm.db"),
+            expansion_provider=expansion_provider,
+            expansion_model=expansion_model,
         )

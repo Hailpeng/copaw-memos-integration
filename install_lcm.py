@@ -21,7 +21,7 @@ import shutil
 from pathlib import Path
 
 # LCM 版本号 - 与 CHANGELOG.md 保持同步
-LCM_VERSION = "0.11"
+LCM_VERSION = "0.13"
 LCM_VERSION_FILE = "lcm_version.txt"
 
 
@@ -124,7 +124,7 @@ def install_lcm():
     print(f"  ✅ LCM Hook 已安装到: {hook_dst}")
     
     # 更新 hooks/__init__.py
-    print(f"\n[3/5] 更新 hooks/__init__.py...")
+    print(f"\n[3/6] 更新 hooks/__init__.py...")
     hooks_init = copaw_path / "agents" / "hooks" / "__init__.py"
     
     if hooks_init.exists():
@@ -157,8 +157,52 @@ def install_lcm():
         else:
             print(f"  ⏭️ LCMHook 已存在于 __init__.py")
     
+    # 更新 model_factory.py 添加 create_model_by_slot
+    print(f"\n[4/6] 更新 model_factory.py...")
+    model_factory = copaw_path / "agents" / "model_factory.py"
+    model_factory_ext = script_dir / "lcm" / "agents" / "model_factory.py"
+    
+    if model_factory.exists():
+        content = model_factory.read_text(encoding="utf-8")
+        
+        if "create_model_by_slot" not in content:
+            # 读取扩展代码
+            if model_factory_ext.exists():
+                ext_content = model_factory_ext.read_text(encoding="utf-8")
+                # 提取函数定义
+                import re
+                func_match = re.search(
+                    r'(def create_model_by_slot\([^)]+\)[^}]+return wrapped_model, formatter)',
+                    ext_content,
+                    re.DOTALL
+                )
+                if func_match:
+                    func_code = func_match.group(1)
+                    # 在 __all__ 之前添加函数
+                    if "__all__" in content:
+                        all_match = re.search(r'__all__\s*=\s*\[', content)
+                        if all_match:
+                            insert_pos = all_match.start()
+                            new_content = content[:insert_pos] + func_code + "\n\n\n" + content[insert_pos:]
+                            # 更新 __all__
+                            new_content = new_content.replace(
+                                '"create_model_and_formatter",\n]',
+                                '"create_model_and_formatter",\n    "create_model_by_slot",\n]'
+                            )
+                            model_factory.write_text(new_content, encoding="utf-8")
+                            print(f"  ✅ 已添加 create_model_by_slot 到: {model_factory}")
+                    else:
+                        # 追加到文件末尾
+                        content += "\n\n\n" + func_code
+                        model_factory.write_text(content, encoding="utf-8")
+                        print(f"  ✅ 已添加 create_model_by_slot 到: {model_factory}")
+            else:
+                print(f"  ⚠️ model_factory.py 扩展文件不存在")
+        else:
+            print(f"  ⏭️ create_model_by_slot 已存在于 model_factory.py")
+    
     # 修改 react_agent.py 以启用 LCM
-    print(f"\n[4/5] 配置 react_agent.py...")
+    print(f"\n[5/6] 配置 react_agent.py...")
     react_agent = copaw_path / "agents" / "react_agent.py"
     
     if react_agent.exists():
@@ -196,7 +240,7 @@ def install_lcm():
                 print(f"  ⚠️ 无法找到插入位置，请手动配置")
     
     # 安装 reme 依赖
-    print(f"\n[5/5] 检查 reme 依赖...")
+    print(f"\n[6/6] 检查 reme 依赖...")
     try:
         import reme
         print(f"  ✅ reme 已安装")

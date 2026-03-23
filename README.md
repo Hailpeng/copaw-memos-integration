@@ -157,7 +157,24 @@ copaw restart
 pip install reme==1.0.3
 ```
 
-#### 步骤 2：下载并运行安装脚本
+#### 步骤 2：配置次选压缩模型（推荐）
+
+LCM 压缩时需要调用 LLM 生成摘要。为了避免与主对话模型冲突，建议配置一个次选模型：
+
+```bash
+# 设置环境变量
+export LCM_EXPANSION_MODEL=aliyun-codingplan/glm-4.7
+
+# 或在 Windows 中
+set LCM_EXPANSION_MODEL=aliyun-codingplan/glm-4.7
+```
+
+**推荐配置：**
+- 使用成本较低的模型（如 glm-4.7）
+- 不与主对话模型冲突
+- 三级降级机制确保稳定性
+
+#### 步骤 3：下载并运行安装脚本
 
 ```bash
 git clone https://github.com/Hailpeng/copaw-memos-integration.git
@@ -165,7 +182,7 @@ cd copaw-memos-integration
 python install_lcm.py
 ```
 
-#### 步骤 3：修改配置
+#### 步骤 4：修改配置
 
 编辑 `~/.copaw/workspaces/default/agent.json`，确保以下配置：
 
@@ -179,21 +196,24 @@ python install_lcm.py
 }
 ```
 
-#### 步骤 4：重启 Copaw
+#### 步骤 5：重启 Copaw
 
 ```bash
 copaw restart
 ```
 
-#### 步骤 5：验证
+#### 步骤 6：验证
 
 发送一条消息，日志应显示：
 
 ```
 INFO: Registered LCM (Lossless Context Management) hook
+INFO: LCM using expansion model: aliyun-codingplan/glm-4.7
 INFO: LCM database initialized at ~/.copaw/lcm.db
 INFO: LCM token check: X tokens, threshold=70000
 ```
+
+如果看到 `LCM using expansion model` 说明次选压缩模型配置成功。
 
 ### ⚠️ 重要：Copaw 更新后需要重新安装
 
