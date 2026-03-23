@@ -1,34 +1,48 @@
-# Release v0.12 - LCM 版本检查 + Copaw 更新重装提示
+# Release v0.12 - LCM 智能安装
 
-## 新增功能 ✨
-
-### LCM 版本检查
+## 一键安装
 
 ```bash
-# 检查安装状态
-python install_lcm.py --check
-
-# 强制重新安装
-python install_lcm.py --force
+python install_lcm.py
 ```
 
-输出示例：
+**自动完成：**
+- ✅ 检查当前安装状态
+- ✅ 检测版本是否需要更新
+- ✅ 只在必要时执行安装
+- ✅ 显示详细状态信息
+
+## 示例输出
+
+**已是最新版本：**
 ```
-✅ LCM 模块: D:\PythonEnv\copaw-env\lib\site-packages\copaw\agents\lcm
-✅ LCM Hook: .../lcm_hook.py
-✅ reme 依赖: 已安装
-已安装版本: v0.12
-✅ LCM 安装完整，可以正常使用
+LCM v0.12 安装程序
+==============================
+检测到已安装版本: v0.12
+✅ LCM v0.12 已是最新版本，无需重新安装
 ```
 
-## 重要提示 ⚠️
+**需要更新：**
+```
+检测到已安装版本: v0.11
+⏫ 将从 v0.11 升级到 v0.12
+[1/5] 安装 LCM 模块...
+...
+```
 
-### Copaw 更新后需要重新安装 LCM
-
-`pip install -U copaw` 会覆盖 LCM 模块！更新后请运行：
+## 命令用法
 
 ```bash
-cd copaw-memos-integration
+python install_lcm.py          # 智能检查 + 安装
+python install_lcm.py --force  # 强制重新安装
+python install_lcm.py --uninstall  # 卸载
+```
+
+## ⚠️ Copaw 更新提示
+
+`pip install -U copaw` 会覆盖 LCM，更新后请运行：
+
+```bash
 python install_lcm.py
 copaw restart
 ```
@@ -38,12 +52,6 @@ copaw restart
 - Token 计数 Bug 修复（完整计算所有消息块类型）
 - 添加调试日志 `LCM token check: X tokens, threshold=Y`
 
-## 文件变更
-
-- `install_lcm.py` - 版本检查功能
-- `README.md` - Copaw 更新提示
-- `lcm/agents/lcm/engine.py` - Token 计数修复
-
 ---
 
-**完整变更日志:** 查看 [CHANGELOG.md](CHANGELOG.md)
+**完整变更日志:** [CHANGELOG.md](CHANGELOG.md)

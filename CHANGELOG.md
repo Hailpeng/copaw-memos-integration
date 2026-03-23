@@ -4,15 +4,26 @@
 
 ### 新增
 
-- **LCM 版本检查功能**
-  - `python install_lcm.py --check` 检查安装状态
+- **智能安装模式** - `python install_lcm.py` 自动检查并安装
+  - 检测已安装版本
+  - 只在必要时执行安装
+  - 已是最新版本时跳过
+
+- **版本检查功能**
   - `python install_lcm.py --force` 强制重新安装
-  - 自动检测是否需要更新
 
 ### 文档
 
 - **README 更新** - 添加 Copaw 更新后重新安装的重要提示
 - 明确说明 `pip install -U copaw` 会覆盖 LCM 模块
+
+### 用法
+
+```bash
+python install_lcm.py          # 智能检查 + 安装
+python install_lcm.py --force  # 强制重新安装
+python install_lcm.py --uninstall  # 卸载
+```
 
 ---
 
