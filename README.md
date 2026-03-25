@@ -305,7 +305,16 @@ INFO: LCM token check: X tokens, threshold=70000
 
 **LCM 模块安装在 Copaw 的 site-packages 目录中，`pip install -U copaw` 会覆盖这些文件！**
 
-#### 更新 Copaw 后的步骤
+#### 各组件更新后状态
+
+| 组件 | 更新后状态 | 需要操作 |
+|------|-----------|----------|
+| **LCM 模块** | ❌ 会被覆盖 | 运行 `install_lcm.py` 重装 |
+| **MCP 全局包** | ✅ 不受影响 | 无需操作 |
+| **agent.json** | ⚠️ 可能重置 | 检查 MCP 配置是否正确 |
+| **lcm.db 数据库** | ✅ 不受影响 | 数据保留在 `~/.copaw/lcm.db` |
+
+#### 更新 Copaw 后的恢复流程
 
 ```bash
 # 1. 更新 Copaw
@@ -315,8 +324,18 @@ pip install -U copaw
 cd copaw-memos-integration
 python install_lcm.py
 
-# 3. 重启 Copaw
+# 3. 检查 agent.json 的 MCP 配置
+# 确保 memos.command 指向全局路径（Windows）：
+# "command": "C:\\Users\\你的用户名\\AppData\\Roaming\\npm\\memos-api-mcp.cmd"
+# Linux/macOS 可以继续使用 npx 方式
+
+# 4. 重启 Copaw
 copaw restart
+
+# 5. 验证
+# 日志应显示：
+# - "Registered LCM (Lossless Context Management) hook"
+# - 无 "MCP session interrupted" 警告
 ```
 
 **`python install_lcm.py` 会自动：**
@@ -327,13 +346,13 @@ copaw restart
 
 输出示例：
 ```
-LCM v0.12 安装程序
+LCM v0.14.2 安装程序
 ==============================
 
 Copaw 安装目录: D:\PythonEnv\copaw-env\lib\site-packages\copaw
 
-检测到已安装版本: v0.12
-✅ LCM v0.12 已是最新版本，无需重新安装
+检测到已安装版本: v0.14.1
+⏫ 将从 v0.14.1 升级到 v0.14.2
 
 如需强制重新安装，请使用: python install_lcm.py --force
 ```
