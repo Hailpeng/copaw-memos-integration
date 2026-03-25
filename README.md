@@ -137,9 +137,43 @@ INFO: LCM database initialized at ~/.copaw/lcm.db
 2. 注册/登录账号
 3. 在 API 控制台创建 API Key（格式：`mpg-xxx`）
 
-#### 步骤 2：配置 agent.json
+#### 步骤 2：全局安装 MCP 包（推荐）
+
+**⚠️ Windows 用户强烈推荐全局安装，避免 npx 启动导致的管道中断问题！**
+
+```bash
+npm install -g @memtensor/memos-api-mcp@latest
+```
+
+#### 步骤 3：配置 agent.json
 
 编辑 `~/.copaw/workspaces/default/agent.json`，在 `mcp.clients` 中添加：
+
+**方式 A：全局安装（推荐，Windows 必选）**
+
+```json
+{
+  "mcp": {
+    "clients": {
+      "memos": {
+        "name": "memos-api-mcp",
+        "description": "MemOS 云端记忆服务",
+        "enabled": true,
+        "transport": "stdio",
+        "command": "C:\\Users\\你的用户名\\AppData\\Roaming\\npm\\memos-api-mcp.cmd",
+        "args": [],
+        "env": {
+          "MEMOS_API_KEY": "mpg-你的API密钥",
+          "MEMOS_USER_ID": "你的用户标识",
+          "MEMOS_CHANNEL": "MODELSCOPE"
+        }
+      }
+    }
+  }
+}
+```
+
+**方式 B：npx 启动（Linux/macOS 可选）**
 
 ```json
 {
@@ -170,8 +204,9 @@ INFO: LCM database initialized at ~/.copaw/lcm.db
 | `MEMOS_API_KEY` | API 密钥（从官网获取） | `mpg-xxx` |
 | `MEMOS_USER_ID` | 用户标识（**推荐用邮箱/姓名**） | `user@example.com` |
 | `MEMOS_CHANNEL` | 固定值 | `MODELSCOPE` |
+| `command` | Windows 用全局路径，Linux/macOS 可用 npx | 见上方示例 |
 
-#### 步骤 3：重启 Copaw
+#### 步骤 4：重启 Copaw
 
 ```bash
 copaw restart
@@ -391,4 +426,4 @@ MIT License
 
 ---
 
-**最后更新**: 2026-03-23
+**最后更新**: 2026-03-25
