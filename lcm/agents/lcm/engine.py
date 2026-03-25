@@ -78,29 +78,51 @@ class LCMEngine:
         self._compaction_lock = asyncio.Lock()
         self._last_compaction_tokens = 0
     
-    def _blocks_to_text(self, blocks: list) -> str:
-        """Serialize blocks to a plain text representation for token counting."""
+    # Maximum characters per block type (for token estimation safety)
+    MAX_TEXT_BLOCK_CHARS = 4000
+    MAX_TOOL_RESULT_CHARS = 2000
+    MAX_TOOL_ARGS_CHARS = 1000
+
+    def _blocks_to_text(self, blocks: list, truncate: bool = True) -> str:
+        """Serialize blocks to a plain text representation for token counting.
+        
+        Args:
+            blocks: Message content blocks
+            truncate: Whether to truncate long content (default True for safety)
+            
+        Returns:
+            Concatenated text representation
+        """
         text_parts = []
         if isinstance(blocks, list):
             for block in blocks:
                 if isinstance(block, dict):
                     block_type = block.get("type", "")
                     if block_type == "text":
-                        text_parts.append(block.get("text", ""))
+                        text = block.get("text", "")
+                        if truncate and len(text) > self.MAX_TEXT_BLOCK_CHARS:
+                            text = text[:self.MAX_TEXT_BLOCK_CHARS] + "...[truncated]"
+                        text_parts.append(text)
                     elif block_type == "tool_use":
                         tool_name = block.get("name", "?")
                         tool_args = block.get("input", {})
-                        args_str = str(tool_args)[:1000]
+                        args_str = str(tool_args)[:self.MAX_TOOL_ARGS_CHARS]
                         text_parts.append(f"[Tool: {tool_name}] {args_str}")
                     elif block_type == "tool_result":
                         result = block.get("content", "")
-                        if isinstance(result, str) and len(result) > 2000:
-                            result = result[:2000] + "...[truncated]"
+                        if isinstance(result, str):
+                            if truncate and len(result) > self.MAX_TOOL_RESULT_CHARS:
+                                result = result[:self.MAX_TOOL_RESULT_CHARS] + "...[truncated]"
+                        else:
+                            result = str(result)[:self.MAX_TOOL_RESULT_CHARS]
                         text_parts.append(f"[ToolResult] {result}")
+                    else:
+                        # Unknown block type, convert to string with limit
+                        text_parts.append(str(block)[:self.MAX_TEXT_BLOCK_CHARS])
                 else:
-                    text_parts.append(str(block))
+                    text_parts.append(str(block)[:self.MAX_TEXT_BLOCK_CHARS])
         else:
-            text_parts.append(str(blocks))
+            text_parts.append(str(blocks)[:self.MAX_TEXT_BLOCK_CHARS])
         return " ".join(text_parts)
     
     async def initialize(self) -> None:
@@ -199,36 +221,53 @@ class LCMEngine:
         """
         await self.initialize()
         
-        # Count tokens
+        # Get max_input_chars from config (with fallback)
+        max_chars = getattr(self.config, "max_input_chars", 202752)
+        
+        # FAST PATH: Character-based early detection (before expensive token counting)
+        # This catches cases where users paste huge logs/text
+        char_len = 0
+        try:
+            for m in messages:
+                try:
+                    if isinstance(m.content, str):
+                        char_len += len(m.content)
+                    else:
+                        char_len += len(self._blocks_to_text(m.content, truncate=False))
+                except Exception:
+                    char_len += len(str(m.content)) if m.content else 0
+                
+                # Early exit if already over limit
+                if char_len > max_chars:
+                    logger.warning(
+                        f"LCM: Character limit exceeded during scan: {char_len} > {max_chars}, "
+                        f"forcing compression (skipped token counting)"
+                    )
+                    async with self._compaction_lock:
+                        return await self._do_compaction(messages, max_tokens)
+        except Exception as e:
+            logger.warning(f"Error during character scan: {e}")
+        
+        # SLOW PATH: Token-based threshold check
         if not self.token_counter:
             logger.warning("LCM: No token_counter available, skipping compaction check")
             return messages, False
         
         try:
-            # Token counter may accept messages or text parameter
             total_tokens = await self._count_messages_tokens(messages)
         except Exception as e:
             logger.warning(f"Failed to count tokens: {e}")
+            # Fall back to character-based check
+            if char_len > max_chars * 0.5:  # Rough estimate: 1 token ≈ 2 chars
+                logger.info(f"LCM: Token count failed, using char length {char_len} as fallback")
+                async with self._compaction_lock:
+                    return await self._do_compaction(messages, max_tokens)
             return messages, False
         
         threshold = int(max_tokens * self.config.context_threshold)
         
-        # Force compression if input exceeds max_input_chars
-        full_text = ""
-        try:
-            for m in messages:
-                full_text += self._blocks_to_text(m.content) + " "
-        except Exception:
-            full_text = ""
-        char_len = len(full_text)
-        max_chars = getattr(self.config, "max_input_chars", 202752)
-        if char_len > max_chars:
-            logger.info(f"LCM: input length {char_len} exceeds max_input_chars {max_chars}, forcing compression")
-            async with self._compaction_lock:
-                return await self._do_compaction(messages, max_tokens)
-        
-        # Log token count for debugging
-        logger.info(f"LCM token check: {total_tokens} tokens, threshold={threshold}, max={max_tokens}")
+        # Log for debugging
+        logger.info(f"LCM check: {total_tokens} tokens, {char_len} chars, threshold={threshold}, max={max_tokens}")
         
         if total_tokens < threshold:
             logger.debug(f"No compaction needed: {total_tokens} < {threshold}")

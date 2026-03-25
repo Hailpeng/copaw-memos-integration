@@ -57,6 +57,9 @@ class LCMConfig:
     # Search
     enable_fts: bool = True
     
+    # Safety cap for input length (character-based early detection)
+    max_input_chars: int = 202752
+    
     def __post_init__(self):
         """Set default db_path if not provided."""
         if not self.db_path:
@@ -101,6 +104,3 @@ class LCMConfig:
             expansion_provider=expansion_provider,
             expansion_model=expansion_model,
         )
-    
-    # Safety cap for input length
-    max_input_chars: int = 202752

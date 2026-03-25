@@ -1,5 +1,40 @@
 # 更新日志
 
+## [1.2.0] - 2026-03-25
+
+### 修复
+
+- **LCM 字符级早期检测** - 用户粘贴大量文本时仍超限报错的问题
+  - 问题：Token 计数很慢，大段文本在计数完成前就已经超限
+  - 修复：在 token 计数前增加快速字符扫描，超过 `max_input_chars` 立即触发压缩
+  - 优化：扫描过程中提前退出，不浪费时间
+
+### 改进
+
+- **`_blocks_to_text` 方法增强**
+  - 添加 `truncate` 参数，默认截断长内容
+  - 新增类常量：`MAX_TEXT_BLOCK_CHARS = 4000`、`MAX_TOOL_RESULT_CHARS = 2000`
+  - 对所有内容块类型进行长度限制，防止超大内容
+
+- **配置字段位置修正**
+  - `max_input_chars` 移到 dataclass 正确位置（`enable_fts` 后面）
+  - 确保属性可以被正确访问
+
+### 技术细节
+
+```python
+# FAST PATH: 字符扫描（快速，提前退出）
+for m in messages:
+    char_len += len(content)
+    if char_len > max_chars:  # 202752
+        return await self._do_compaction(...)  # 立即触发
+
+# SLOW PATH: Token 计数（仅在字符未超限时执行）
+total_tokens = await self._count_messages_tokens(messages)
+```
+
+---
+
 ## [0.14.2] - 2026-03-24
 
 ### 修复
