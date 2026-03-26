@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+﻿#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """LCM (Lossless Context Management) 安装脚本
 
@@ -10,7 +10,7 @@
 - FTS5 全文搜索
 - Agent 工具：lcm_grep, lcm_describe, lcm_expand
 
-⚠️ 重要提示：
+[WARN] 重要提示：
 - 安装前会自动清理旧的硬编码 MemOS 集成
 - Copaw 更新（pip install -U copaw）会覆盖 LCM 模块
 - 更新后请重新运行此脚本：python install_lcm.py
@@ -23,7 +23,7 @@ import shutil
 from pathlib import Path
 
 # LCM 版本号 - 与 CHANGELOG.md 保持同步
-LCM_VERSION = "1.3.0"
+LCM_VERSION = "1.4.0"
 LCM_VERSION_FILE = "lcm_version.txt"
 
 
@@ -33,7 +33,7 @@ def clean_legacy_memos_integration(copaw_path: Path):
     迁移到 MCP 方式后，需要删除内置的 memory_add 等工具。
     这些代码会与 MCP 工具冲突。
     """
-    print("\n🔍 检查旧的 MemOS 硬编码集成...")
+    print("\n[CHK] 检查旧的 MemOS 硬编码集成...")
     
     # 检查是否需要清理
     memory_manager = copaw_path / "agents" / "memory" / "memory_manager.py"
@@ -45,25 +45,25 @@ def clean_legacy_memos_integration(copaw_path: Path):
         content = memory_manager.read_text(encoding="utf-8")
         if "MemOSClient" in content or "memos_enabled" in content:
             needs_cleanup = True
-            print("  ⚠️ 发现 MemOSClient 类 (memory_manager.py)")
+            print("  [WARN] 发现 MemOSClient 类 (memory_manager.py)")
     
     if memory_search.exists():
         content = memory_search.read_text(encoding="utf-8")
         if "memory_add" in content or "memos_enabled" in content:
             needs_cleanup = True
-            print("  ⚠️ 发现 memory_add 工具 (memory_search.py)")
+            print("  [WARN] 发现 memory_add 工具 (memory_search.py)")
     
     if not needs_cleanup:
-        print("  ✅ 无需清理，未发现旧的 MemOS 集成")
+        print("  [OK] 无需清理，未发现旧的 MemOS 集成")
         return
     
-    print("\n🧹 开始清理旧的 MemOS 集成...")
+    print("\n[CLEAN] 开始清理旧的 MemOS 集成...")
     
     # 1. 删除 memory_search.py (整个文件都是 MemOS 工具)
     tools_dir = copaw_path / "agents" / "tools"
     if memory_search.exists():
         memory_search.unlink()
-        print(f"  ✅ 删除: {memory_search}")
+        print(f"  [OK] 删除: {memory_search}")
     
     # 2. 清理 tools/__init__.py
     tools_init = tools_dir / "__init__.py"
@@ -82,7 +82,7 @@ def clean_legacy_memos_integration(copaw_path: Path):
         for p in patterns:
             content = re.sub(p, '', content, flags=re.DOTALL)
         tools_init.write_text(content, encoding="utf-8")
-        print(f"  ✅ 清理: {tools_init}")
+        print(f"  [OK] 清理: {tools_init}")
     
     # 3. 清理 memory_manager.py
     if memory_manager.exists():
@@ -115,7 +115,7 @@ def clean_legacy_memos_integration(copaw_path: Path):
         
         if content != original:
             memory_manager.write_text(content, encoding="utf-8")
-            print(f"  ✅ 清理: {memory_manager}")
+            print(f"  [OK] 清理: {memory_manager}")
     
     # 4. 清理 react_agent.py
     react_agent = copaw_path / "agents" / "react_agent.py"
@@ -134,9 +134,9 @@ def clean_legacy_memos_integration(copaw_path: Path):
         
         if content != original:
             react_agent.write_text(content, encoding="utf-8")
-            print(f"  ✅ 清理: {react_agent}")
+            print(f"  [OK] 清理: {react_agent}")
     
-    print("  ✅ 旧的 MemOS 集成已清理")
+    print("  [OK] 旧的 MemOS 集成已清理")
 
 
 def get_copaw_site_packages() -> Path:
@@ -201,11 +201,11 @@ def install_lcm():
         print(f"\n检测到已安装版本: v{installed_version}")
         
         if installed_version == LCM_VERSION:
-            print(f"✅ LCM v{LCM_VERSION} 已是最新版本，无需重新安装")
+            print(f"[OK] LCM v{LCM_VERSION} 已是最新版本，无需重新安装")
             print("\n如需强制重新安装，请使用: python install_lcm.py --force")
             return
         else:
-            print(f"⏫ 将从 v{installed_version} 升级到 v{LCM_VERSION}")
+            print(f"[UP] 将从 v{installed_version} 升级到 v{LCM_VERSION}")
     
     # 目标路径
     lcm_src = script_dir / "lcm" / "agents" / "lcm"
@@ -253,11 +253,11 @@ def install_lcm():
                 }
                 version_json = lcm_dst.parent.parent.parent / "lcm_installed_version.json"
                 version_json.write_text(json.dumps(version_data, indent=2), encoding="utf-8")
-                print(f"  ✅ 记录 Copaw 版本: {copaw_version}")
+                print(f"  [OK] 记录 Copaw 版本: {copaw_version}")
     except Exception as e:
-        print(f"  ⚠️ 无法记录 Copaw 版本: {e}")
+        print(f"  [WARN] 无法记录 Copaw 版本: {e}")
     
-    print(f"  ✅ LCM 模块已安装到: {lcm_dst}")
+    print(f"  [OK] LCM 模块已安装到: {lcm_dst}")
     
     # 安装 Hook
     print(f"\n[2/6] 安装 LCM Hook...")
@@ -265,7 +265,7 @@ def install_lcm():
     if hook_dst.exists():
         hook_dst.unlink()
     shutil.copy2(hook_src, hook_dst)
-    print(f"  ✅ LCM Hook 已安装到: {hook_dst}")
+    print(f"  [OK] LCM Hook 已安装到: {hook_dst}")
     
     # 更新 hooks/__init__.py
     print(f"\n[3/6] 更新 hooks/__init__.py...")
@@ -297,9 +297,9 @@ def install_lcm():
                 )
             
             hooks_init.write_text(content, encoding="utf-8")
-            print(f"  ✅ 已更新: {hooks_init}")
+            print(f"  [OK] 已更新: {hooks_init}")
         else:
-            print(f"  ⏭️ LCMHook 已存在于 __init__.py")
+            print(f"  [SKIP] LCMHook 已存在于 __init__.py")
     
     # 更新 model_factory.py 添加 create_model_by_slot
     print(f"\n[4/6] 更新 model_factory.py...")
@@ -334,16 +334,16 @@ def install_lcm():
                                 '"create_model_and_formatter",\n    "create_model_by_slot",\n]'
                             )
                             model_factory.write_text(new_content, encoding="utf-8")
-                            print(f"  ✅ 已添加 create_model_by_slot 到: {model_factory}")
+                            print(f"  [OK] 已添加 create_model_by_slot 到: {model_factory}")
                     else:
                         # 追加到文件末尾
                         content += "\n\n\n" + func_code
                         model_factory.write_text(content, encoding="utf-8")
-                        print(f"  ✅ 已添加 create_model_by_slot 到: {model_factory}")
+                        print(f"  [OK] 已添加 create_model_by_slot 到: {model_factory}")
             else:
-                print(f"  ⚠️ model_factory.py 扩展文件不存在")
+                print(f"  [WARN] model_factory.py 扩展文件不存在")
         else:
-            print(f"  ⏭️ create_model_by_slot 已存在于 model_factory.py")
+            print(f"  [SKIP] create_model_by_slot 已存在于 model_factory.py")
     
     # 修改 react_agent.py 以启用 LCM
     print(f"\n[5/6] 配置 react_agent.py...")
@@ -354,7 +354,7 @@ def install_lcm():
         
         # 检查是否已经配置
         if "Registered LCM (Lossless Context Management) hook" in content:
-            print(f"  ⏭️ LCM 已在 react_agent.py 中配置")
+            print(f"  [SKIP] LCM 已在 react_agent.py 中配置")
         else:
             # 找到 bootstrap hook 注册后的位置
             marker = 'logger.info("Registered bootstrap hook")'
@@ -379,21 +379,21 @@ def install_lcm():
 '''
                 content = content.replace(marker, marker + lcm_code)
                 react_agent.write_text(content, encoding="utf-8")
-                print(f"  ✅ 已配置: {react_agent}")
+                print(f"  [OK] 已配置: {react_agent}")
             else:
-                print(f"  ⚠️ 无法找到插入位置，请手动配置")
+                print(f"  [WARN] 无法找到插入位置，请手动配置")
     
     # 安装 reme 依赖
     print(f"\n[6/6] 检查 reme 依赖...")
     try:
         import reme
-        print(f"  ✅ reme 已安装")
+        print(f"  [OK] reme 已安装")
     except ImportError:
-        print(f"  ⚠️ reme 未安装，正在安装...")
+        print(f"  [WARN] reme 未安装，正在安装...")
         os.system("pip install reme==1.0.3")
     
     print("\n" + "=" * 60)
-    print(f"✅ LCM v{LCM_VERSION} 安装完成！")
+    print(f"[OK] LCM v{LCM_VERSION} 安装完成！")
     print("=" * 60)
     print("\n下一步：")
     print("1. 重启 Copaw: copaw restart")
@@ -401,7 +401,7 @@ def install_lcm():
     print("   'INFO: Registered LCM (Lossless Context Management) hook'")
     print("   'INFO: LCM token check: X tokens, threshold=70000'")
     print("\n数据库位置: ~/.copaw/lcm.db")
-    print("\n⚠️ 注意：Copaw 更新后需要重新运行此脚本")
+    print("\n[WARN] 注意：Copaw 更新后需要重新运行此脚本")
     print("=" * 60)
 
 
@@ -415,7 +415,7 @@ def check_installation():
         copaw_path = get_copaw_site_packages()
         print(f"\nCopaw 安装目录: {copaw_path}")
     except FileNotFoundError as e:
-        print(f"\n❌ {e}")
+        print(f"\n[X] {e}")
         return
     
     # 检查各个组件
@@ -430,14 +430,14 @@ def check_installation():
         if name == "reme 依赖":
             try:
                 import reme
-                print(f"✅ {name}: 已安装")
+                print(f"[OK] {name}: 已安装")
             except ImportError:
-                print(f"❌ {name}: 未安装 (pip install reme==1.0.3)")
+                print(f"[X] {name}: 未安装 (pip install reme==1.0.3)")
                 all_ok = False
         elif path and path.exists():
-            print(f"✅ {name}: {path}")
+            print(f"[OK] {name}: {path}")
         else:
-            print(f"❌ {name}: 未安装")
+            print(f"[X] {name}: 未安装")
             all_ok = False
     
     # 版本检查
@@ -447,13 +447,13 @@ def check_installation():
         print(f"最新版本: v{LCM_VERSION}")
         
         if installed_version != LCM_VERSION:
-            print(f"⚠️ 需要更新！请运行: python install_lcm.py")
+            print(f"[WARN] 需要更新！请运行: python install_lcm.py")
             all_ok = False
     
     if all_ok:
-        print("\n✅ LCM 安装完整，可以正常使用")
+        print("\n[OK] LCM 安装完整，可以正常使用")
     else:
-        print("\n❌ LCM 安装不完整，请运行: python install_lcm.py")
+        print("\n[X] LCM 安装不完整，请运行: python install_lcm.py")
 
 
 def uninstall_lcm():
@@ -468,22 +468,22 @@ def uninstall_lcm():
     lcm_dst = copaw_path / "agents" / "lcm"
     if lcm_dst.exists():
         shutil.rmtree(lcm_dst)
-        print(f"✅ 已删除: {lcm_dst}")
+        print(f"[OK] 已删除: {lcm_dst}")
     
     # 删除 Hook
     hook_dst = copaw_path / "agents" / "hooks" / "lcm_hook.py"
     if hook_dst.exists():
         hook_dst.unlink()
-        print(f"✅ 已删除: {hook_dst}")
+        print(f"[OK] 已删除: {hook_dst}")
     
     # 恢复备份
     backup_dir = copaw_path / "agents" / "lcm_backup"
     if backup_dir.exists():
         shutil.copytree(backup_dir, lcm_dst, dirs_exist_ok=True)
         shutil.rmtree(backup_dir)
-        print(f"✅ 已从备份恢复")
+        print(f"[OK] 已从备份恢复")
     
-    print("\n✅ LCM 已卸载")
+    print("\n[OK] LCM 已卸载")
     print("请重启 Copaw: copaw restart")
 
 
