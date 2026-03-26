@@ -1,5 +1,52 @@
 # 更新日志
 
+## [1.3.0] - 2026-03-26
+
+### 修复
+
+- **🔴 关键：单条大消息截断** - 当只有一条消息但超过 API 限制时，现在会正确截断
+  - 问题：`compactor.py` 对单条消息返回原消息，不触发任何处理
+  - 修复：新增 `_truncate_message()` 和 `_truncate_all_messages()` 方法
+  - 效果：单条 250k 字符消息正确截断到 202k 以内
+
+- **🔴 关键：字符检查阈值优化** - 更早触发压缩，防止 API 超限
+  - 问题：字符检查使用绝对限制而非阈值，导致压缩触发太晚
+  - 修复：改用 `max_chars * context_threshold` 作为触发阈值
+  - 效果：字符达到 141,926（70%）时就开始压缩，而不是等到 202,752
+
+- **实际序列化大小检查** - 使用 `model_dump_json()` 获取真实发送大小
+  - 问题：`_blocks_to_text()` 有截断，低估了实际发送的字符数
+  - 修复：字符扫描使用 `model_dump_json()` 获取精确的序列化大小
+  - 效果：准确检测何时会触发 API 限制
+
+### 技术细节
+
+```python
+# 1. 使用实际序列化大小
+if hasattr(m, 'model_dump_json'):
+    char_len += len(m.model_dump_json())
+
+# 2. 阈值触发（更早）
+char_threshold = int(max_chars * self.config.context_threshold)
+if char_len > char_threshold:
+    return await self._do_compaction(messages, max_tokens)
+
+# 3. 单条大消息截断
+if content_size > max_chars:
+    return [self._truncate_message(msg, max_chars - 100)]
+
+# 4. 压缩失败的后备方案
+return self._truncate_all_messages(messages, max_chars)
+```
+
+### 验证
+
+- ✅ 单条 250k 字符消息 → 截断到 202k
+- ✅ 10 条共 300k 字符 → 压缩成 2 条，30k 字符
+- ✅ 字符超限检测 → 立即触发压缩
+
+---
+
 ## [1.2.0] - 2026-03-25
 
 ### 修复
