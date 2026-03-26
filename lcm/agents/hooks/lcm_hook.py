@@ -16,6 +16,13 @@ from copaw.agents.model_factory import create_model_and_formatter, create_model_
 
 from ..lcm import LCMEngine, LCMConfig
 
+# Try to import version checker (may not exist in older installations)
+try:
+    from ..lcm.version_check import check_version_changed
+    _VERSION_CHECK_AVAILABLE = True
+except ImportError:
+    _VERSION_CHECK_AVAILABLE = False
+
 if TYPE_CHECKING:
     from ..memory import MemoryManager
 
@@ -129,6 +136,13 @@ class LCMHook:
         await self._engine.initialize()
         self._initialized = True
         logger.info(f"LCM hook initialized for agent: {self.agent_id}")
+        
+        # Check if copaw version has changed (need reinstall after update)
+        if _VERSION_CHECK_AVAILABLE:
+            try:
+                check_version_changed()
+            except Exception as e:
+                logger.debug(f"Version check failed: {e}")
     
     async def __call__(
         self,

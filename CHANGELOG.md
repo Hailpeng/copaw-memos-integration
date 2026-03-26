@@ -1,5 +1,31 @@
 # 更新日志
 
+## [1.4.0] - 2026-03-26
+
+### 新增
+
+- **🔄 Copaw 版本变化检测** - 自动提醒用户重新安装
+  - 安装时记录当前 copaw 版本
+  - 每次启动时检查 copaw 版本是否变化
+  - 如果变化，打印警告提醒用户重新安装
+  - 新增 `version_check.py` 模块
+
+### 技术细节
+
+```python
+# 安装时记录
+version_data = {
+    "lcm_version": "1.4.0",
+    "copaw_version": "0.1.0.post1"
+}
+
+# 启动时检查
+if current_copaw_version != saved_copaw_version:
+    logger.warning("⚠️ Copaw version changed, please reinstall LCM")
+```
+
+---
+
 ## [1.3.0] - 2026-03-26
 
 ### 修复

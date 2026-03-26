@@ -23,7 +23,7 @@ import shutil
 from pathlib import Path
 
 # LCM 版本号 - 与 CHANGELOG.md 保持同步
-LCM_VERSION = "0.14.2"
+LCM_VERSION = "1.3.0"
 LCM_VERSION_FILE = "lcm_version.txt"
 
 
@@ -229,6 +229,33 @@ def install_lcm():
     # 写入版本文件
     version_file = lcm_dst / LCM_VERSION_FILE
     version_file.write_text(LCM_VERSION, encoding="utf-8")
+    
+    # 保存 copaw 版本（用于检测更新后需要重新安装）
+    try:
+        import subprocess
+        result = subprocess.run(
+            ["pip", "show", "copaw"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if result.returncode == 0:
+            import json
+            copaw_version = None
+            for line in result.stdout.split("\n"):
+                if line.startswith("Version:"):
+                    copaw_version = line.split(":", 1)[1].strip()
+                    break
+            if copaw_version:
+                version_data = {
+                    "lcm_version": LCM_VERSION,
+                    "copaw_version": copaw_version,
+                }
+                version_json = lcm_dst.parent.parent.parent / "lcm_installed_version.json"
+                version_json.write_text(json.dumps(version_data, indent=2), encoding="utf-8")
+                print(f"  ✅ 记录 Copaw 版本: {copaw_version}")
+    except Exception as e:
+        print(f"  ⚠️ 无法记录 Copaw 版本: {e}")
     
     print(f"  ✅ LCM 模块已安装到: {lcm_dst}")
     
