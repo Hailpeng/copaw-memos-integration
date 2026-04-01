@@ -122,13 +122,28 @@ def uninstall_lcm(copaw_path):
     lcm_hook_bak = copaw_path / "agents" / "hooks" / "lcm_hook.py.bak"
     remove_file(lcm_hook_bak)
     
-    # 4. 删除 __pycache__ 中的编译文件
-    pycache = copaw_path / "agents" / "hooks" / "__pycache__"
-    if pycache.exists():
-        for f in pycache.glob("*lcm*"):
+    # 4. 删除 MemOS Hook
+    memos_hook = copaw_path / "agents" / "hooks" / "memos_hook.py"
+    remove_file(memos_hook)
+    
+    # 5. 删除 memory_manager 备份
+    memory_manager_bak = copaw_path / "agents" / "memory" / "memory_manager.py.bak"
+    remove_file(memory_manager_bak)
+    
+    # 6. 删除 __pycache__ 中的编译文件
+    hooks_pycache = copaw_path / "agents" / "hooks" / "__pycache__"
+    if hooks_pycache.exists():
+        for f in hooks_pycache.glob("*lcm*"):
+            remove_file(f)
+        for f in hooks_pycache.glob("*memos*"):
             remove_file(f)
     
-    print("  [OK] LCM 模块卸载完成")
+    memory_pycache = copaw_path / "agents" / "memory" / "__pycache__"
+    if memory_pycache.exists():
+        for f in memory_pycache.glob("*memory_manager*"):
+            remove_file(f)
+    
+    print("  [OK] LCM/MemOS Hook 卸载完成")
 
 
 def uninstall_memos():
