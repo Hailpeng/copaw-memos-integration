@@ -67,15 +67,7 @@ copaw restart
 
 **A:** 
 - **Copaw 本地记忆**：`MEMORY.md`、`memory/*.md` 文件不受影响
-- **MemOS 云端记忆**：卸载后将无法访问，建议提前导出
-
-### Q: 如何导出 MemOS 中的记忆？
-
-**A:** 
-如果 MemOS 服务还能用，在卸载前对 Copaw 说：
-```
-请帮我搜索所有记忆并保存到 MEMORY.md
-```
+- **MemOS 云端记忆**：已无法访问（服务已停用）
 
 ### Q: 我找不到 Copaw 安装目录怎么办？
 
