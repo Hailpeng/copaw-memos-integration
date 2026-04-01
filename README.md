@@ -18,7 +18,25 @@
 
 如果你之前安装过本项目，请按以下步骤清理：
 
-### 第一步：保存你的记忆
+### 方式一：使用自动卸载脚本（推荐）
+
+```bash
+git clone https://github.com/Hailpeng/copaw-memos-integration.git
+cd copaw-memos-integration
+python uninstall.py
+```
+
+脚本会自动执行：
+1. ✅ 删除 LCM 模块和 Hook
+2. ✅ 清理本地配置文件和数据库
+3. ✅ 更新 agent.json 配置
+4. ✅ 删除 MemOS 相关目录
+
+### 方式二：手动卸载
+
+如果自动脚本无法使用，请按以下步骤手动清理：
+
+#### 第一步：保存你的记忆
 
 **⚠️ 重要：卸载前请先保存你在 MemOS 中的记忆！**
 
@@ -32,18 +50,7 @@
 2. 如果 MemOS 服务无法访问，你的记忆可能已经丢失
 3. 卸载后 MemOS 云端记忆将无法恢复
 
-### 第二步：删除 LCM 相关文件
-
-```bash
-# 删除 LCM 数据库
-rm ~/.copaw/lcm.db
-
-# 删除 LCM 脚本文件
-rm ~/.copaw/check_lcm_data.py
-rm ~/.copaw/recover_lcm_memories.py
-rm ~/.copaw/workspaces/default/check_lcm*.py
-rm ~/.copaw/workspaces/default/test_lcm*.py
-```
+#### 第二步：删除 LCM 相关文件
 
 **Windows 用户：**
 ```cmd
@@ -52,54 +59,56 @@ del C:\Users\你的用户名\.copaw\check_lcm_data.py
 del C:\Users\你的用户名\.copaw\recover_lcm_memories.py
 del C:\Users\你的用户名\.copaw\workspaces\default\check_lcm*.py
 del C:\Users\你的用户名\.copaw\workspaces\default\test_lcm*.py
+del C:\Users\你的用户名\.copaw\workspaces\default\LCM_DESIGN.md
 ```
 
-### 第三步：删除 LCM 模块（Copaw 源码）
-
-**找到你的 Copaw 安装目录，然后删除：**
-
+**Linux/macOS：**
 ```bash
-# Linux/macOS
-rm -rf ~/.copaw-env/lib/site-packages/copaw/agents/lcm
-rm ~/.copaw-env/lib/site-packages/copaw/agents/hooks/lcm_hook.py
-
-# Windows（示例路径）
-rmdir /s /q "D:\PythonEnv\copaw-env\lib\site-packages\copaw\agents\lcm"
-del "D:\PythonEnv\copaw-env\lib\site-packages\copaw\agents\hooks\lcm_hook.py"
+rm ~/.copaw/lcm.db
+rm ~/.copaw/check_lcm_data.py
+rm ~/.copaw/recover_lcm_memories.py
+rm ~/.copaw/workspaces/default/check_lcm*.py
+rm ~/.copaw/workspaces/default/test_lcm*.py
+rm ~/.copaw/workspaces/default/LCM_DESIGN.md
 ```
 
-**如何找到 Copaw 安装目录：**
+#### 第三步：删除 LCM 模块（Copaw 源码）
+
+**找到你的 Copaw 安装目录：**
 ```bash
 python -c "import copaw; print(copaw.__path__[0])"
 ```
 
-### 第四步：卸载 MemOS MCP
+**然后删除：**
+
+**Windows（示例路径）：**
+```cmd
+rmdir /s /q "D:\PythonEnv\copaw-env\lib\site-packages\copaw\agents\lcm"
+del "D:\PythonEnv\copaw-env\lib\site-packages\copaw\agents\hooks\lcm_hook.py"
+del "D:\PythonEnv\copaw-env\lib\site-packages\copaw\agents\hooks\lcm_hook.py.bak"
+```
+
+**Linux/macOS：**
+```bash
+rm -rf ~/.copaw-env/lib/site-packages/copaw/agents/lcm
+rm ~/.copaw-env/lib/site-packages/copaw/agents/hooks/lcm_hook.py
+rm ~/.copaw-env/lib/site-packages/copaw/agents/hooks/lcm_hook.py.bak
+```
+
+#### 第四步：卸载 MemOS MCP
 
 1. **从 agent.json 中删除 MemOS 配置**
 
-   编辑 `~/.copaw/workspaces/default/agent.json`，删除或注释掉 `mcp.clients.memos` 部分：
-
+   编辑 `~/.copaw/workspaces/default/agent.json`，删除 `mcp.clients.memos` 部分：
    ```json
    {
      "mcp": {
-       "clients": {
-         // 删除 memos 配置
-       }
+       "clients": {}
      }
    }
    ```
 
-2. **卸载全局 npm 包（可选）**
-
-   ```bash
-   npm uninstall -g @memtensor/memos-api-mcp
-   ```
-
-### 第五步：恢复原始配置
-
-编辑 `~/.copaw/workspaces/default/agent.json`：
-
-1. **删除 system_prompt_files 中的 LCM_DESIGN.md**
+2. **删除 system_prompt_files 中的 LCM_DESIGN.md**
 
    ```json
    {
@@ -109,12 +118,11 @@ python -c "import copaw; print(copaw.__path__[0])"
        "PROFILE.md",
        "MEMORY.md",
        "HEARTBEAT.md"
-       // 删除 "LCM_DESIGN.md"
      ]
    }
    ```
 
-2. **恢复默认的 running 配置**（可选）
+3. **恢复默认的 running 配置**（可选）
 
    ```json
    {
@@ -126,13 +134,19 @@ python -c "import copaw; print(copaw.__path__[0])"
    }
    ```
 
-### 第六步：重启 Copaw
+4. **卸载全局 npm 包**（可选）
+
+   ```bash
+   npm uninstall -g @memtensor/memos-api-mcp
+   ```
+
+#### 第五步：重启 Copaw
 
 ```bash
 copaw restart
 ```
 
-### 第七步：验证卸载
+#### 第六步：验证卸载
 
 检查日志中不再出现：
 - ❌ `Registered LCM hook`

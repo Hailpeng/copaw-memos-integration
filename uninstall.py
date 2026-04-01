@@ -1,17 +1,18 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-MemOS 硬编码集成卸载脚本
+Copaw 记忆架构卸载脚本
 
-本脚本用于删除之前硬编码集成到 Copaw 源码中的 MemOS 相关代码。
-运行后，请配置官方 MCP 方式。
+本脚本用于完全卸载本项目安装的所有组件：
+1. MemOS MCP 配置
+2. LCM 模块和数据库
+3. 相关脚本和配置文件
 
-官方文档: https://memos-docs.openmem.net/cn/mcp_agent/mcp/guide
+运行后，Copaw 将恢复到原始状态。
 """
 
 import os
 import sys
-import re
 import shutil
 from pathlib import Path
 
@@ -26,185 +27,193 @@ def get_copaw_path():
         return None
 
 
-def remove_file(filepath):
+def remove_file(filepath, show_msg=True):
     """删除文件"""
     if filepath.exists():
         filepath.unlink()
-        print(f"  [OK] 删除: {filepath}")
+        if show_msg:
+            print(f"  [OK] 删除: {filepath}")
         return True
     return False
 
 
-def restore_init_file(init_path, imports_to_remove, exports_to_remove):
-    """恢复 __init__.py 文件"""
-    if not init_path.exists():
-        print(f"  [!] 文件不存在: {init_path}")
-        return False
-    
-    with open(init_path, 'r', encoding='utf-8') as f:
-        content = f.read()
-    
-    original_content = content
-    
-    # 移除导入语句
-    for imp in imports_to_remove:
-        if imp in content:
-            content = content.replace(imp + '\n', '')
-            content = content.replace(imp, '')
-    
-    # 移除 __all__ 中的导出
-    for exp in exports_to_remove:
-        content = content.replace(f'"{exp}", ', '')
-        content = content.replace(f'"{exp}"', '')
-        content = content.replace(f"'{exp}', ", '')
-        content = content.replace(f"'{exp}'", '')
-    
-    if content != original_content:
-        with open(init_path, 'w', encoding='utf-8') as f:
-            f.write(content)
-        print(f"  [OK] 恢复: {init_path}")
+def remove_dir(dirpath, show_msg=True):
+    """删除目录"""
+    if dirpath.exists():
+        shutil.rmtree(dirpath)
+        if show_msg:
+            print(f"  [OK] 删除目录: {dirpath}")
         return True
-    else:
-        print(f"  [i] 无需修改: {init_path}")
-        return False
+    return False
 
 
-def clean_file_content(filepath, patterns_to_remove, description=""):
-    """清理文件中的特定内容"""
-    if not filepath.exists():
-        print(f"  [!] 文件不存在: {filepath}")
-        return False
+def update_agent_json():
+    """更新 agent.json 配置"""
+    import json
     
-    with open(filepath, 'r', encoding='utf-8') as f:
-        content = f.read()
+    agent_json_path = Path.home() / ".copaw" / "workspaces" / "default" / "agent.json"
     
-    original_content = content
-    
-    for pattern in patterns_to_remove:
-        if isinstance(pattern, str):
-            if pattern in content:
-                content = content.replace(pattern, '')
-        else:  # regex
-            content = re.sub(pattern, '', content, flags=re.DOTALL)
-    
-    if content != original_content:
-        with open(filepath, 'w', encoding='utf-8') as f:
-            f.write(content)
-        print(f"  [OK] 清理: {filepath} {description}")
-        return True
-    else:
-        print(f"  [i] 无需修改: {filepath} {description}")
-        return False
-
-
-def clean_memory_manager(copaw_path):
-    """清理 memory_manager.py 中的 MemOS 相关代码"""
-    filepath = copaw_path / "agents" / "memory" / "memory_manager.py"
-    
-    if not filepath.exists():
-        print(f"  [!] 文件不存在: {filepath}")
+    if not agent_json_path.exists():
+        print(f"  [!] 文件不存在: {agent_json_path}")
         return
     
-    with open(filepath, 'r', encoding='utf-8') as f:
-        content = f.read()
+    try:
+        with open(agent_json_path, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+        
+        modified = False
+        
+        # 1. 删除 MCP memos 配置
+        if 'mcp' in config and 'clients' in config.get('mcp', {}):
+            if 'memos' in config['mcp']['clients']:
+                del config['mcp']['clients']['memos']
+                print("  [OK] 删除 MCP memos 配置")
+                modified = True
+        
+        # 2. 从 system_prompt_files 中删除 LCM_DESIGN.md
+        if 'system_prompt_files' in config:
+            if 'LCM_DESIGN.md' in config['system_prompt_files']:
+                config['system_prompt_files'].remove('LCM_DESIGN.md')
+                print("  [OK] 从 system_prompt_files 删除 LCM_DESIGN.md")
+                modified = True
+        
+        # 3. 恢复 running 配置为默认值
+        if 'running' in config:
+            defaults = {
+                'max_input_length': 80000,
+                'memory_compact_ratio': 0.8,
+                'memory_reserve_ratio': 0.2
+            }
+            
+            for key, value in defaults.items():
+                if key in config['running']:
+                    config['running'][key] = value
+                    modified = True
+                    print(f"  [OK] 恢复 {key} = {value}")
+        
+        if modified:
+            with open(agent_json_path, 'w', encoding='utf-8') as f:
+                json.dump(config, f, indent=2, ensure_ascii=False)
+            print(f"  [OK] 更新配置: {agent_json_path}")
+        else:
+            print(f"  [i] 配置无需修改")
     
-    original_content = content
-    
-    # 1. 删除 MemOSClient 类定义
-    pattern = r'class MemOSClient:.*?(?=\nclass |\Z)'
-    content = re.sub(pattern, '', content, flags=re.DOTALL)
-    
-    # 2. 删除 _memos_client 相关
-    content = re.sub(r'self\._memos_client: Optional\[MemOSClient\] = None\n', '', content)
-    content = re.sub(r'self\._init_memos_client\(\)\n', '', content)
-    
-    # 3. 删除 _init_memos_client 方法
-    pattern = r'    def _init_memos_client\(self\).*?(?=\n    def |\n    @|\Z)'
-    content = re.sub(pattern, '', content, flags=re.DOTALL)
-    
-    # 4. 删除 memos_enabled 属性
-    pattern = r'    @property\n    def memos_enabled\(self\).*?(?=\n    @|\n    def |\Z)'
-    content = re.sub(pattern, '', content, flags=re.DOTALL)
-    
-    # 5. 删除 memory_add 方法
-    pattern = r'    async def memory_add\(self,.*?(?=\n    async def |\n    def |\n    @|\Z)'
-    content = re.sub(pattern, '', content, flags=re.DOTALL)
-    
-    # 6. 删除 memory_search 方法
-    pattern = r'    async def memory_search\(self,.*?(?=\n    async def |\n    def |\n    @|\Z)'
-    content = re.sub(pattern, '', content, flags=re.DOTALL)
-    
-    # 7. 删除 memory_feedback 方法
-    pattern = r'    async def memory_feedback\(self,.*?(?=\n    async def |\n    def |\n    @|\Z)'
-    content = re.sub(pattern, '', content, flags=re.DOTALL)
-    
-    # 8. 删除 memory_get 方法
-    pattern = r'    async def memory_get\(self,.*?(?=\n    async def |\n    def |\n    @|\Z)'
-    content = re.sub(pattern, '', content, flags=re.DOTALL)
-    
-    # 9. 删除 memory_delete 方法
-    pattern = r'    async def memory_delete\(self,.*?(?=\n    async def |\n    def |\n    @|\Z)'
-    content = re.sub(pattern, '', content, flags=re.DOTALL)
-    
-    # 10. 删除 MemOSClient 导入
-    content = re.sub(r'from .*? import .*?MemOSClient.*?\n', '', content)
-    content = re.sub(r', MemOSClient', '', content)
-    
-    # 11. 清理多余的空行
-    content = re.sub(r'\n{4,}', '\n\n\n', content)
-    
-    if content != original_content:
-        with open(filepath, 'w', encoding='utf-8') as f:
-            f.write(content)
-        print(f"  [OK] 清理: {filepath}")
-    else:
-        print(f"  [i] 无需修改: {filepath}")
+    except Exception as e:
+        print(f"  [X] 更新配置失败: {e}")
 
 
-def clean_react_agent(copaw_path):
-    """清理 react_agent.py 中的 memory_add 工具注册"""
-    filepath = copaw_path / "agents" / "react_agent.py"
+def uninstall_lcm(copaw_path):
+    """卸载 LCM 模块"""
+    print()
+    print("=" * 60)
+    print("[*] 卸载 LCM 模块")
+    print("=" * 60)
     
-    if not filepath.exists():
-        print(f"  [!] 文件不存在: {filepath}")
-        return
+    # 1. 删除 LCM 模块目录
+    lcm_dir = copaw_path / "agents" / "lcm"
+    if remove_dir(lcm_dir):
+        print("  [OK] 删除 LCM 模块目录")
     
-    with open(filepath, 'r', encoding='utf-8') as f:
-        content = f.read()
+    # 2. 删除 LCM Hook
+    lcm_hook = copaw_path / "agents" / "hooks" / "lcm_hook.py"
+    remove_file(lcm_hook)
     
-    original_content = content
+    # 3. 删除 LCM Hook 备份
+    lcm_hook_bak = copaw_path / "agents" / "hooks" / "lcm_hook.py.bak"
+    remove_file(lcm_hook_bak)
     
-    # 1. 删除 create_memory_add_tool 导入
-    content = re.sub(r'from \.tools import \(.*?create_memory_add_tool.*?\)', 
-                     lambda m: m.group(0).replace('create_memory_add_tool,\n', '').replace('create_memory_add_tool', ''),
-                     content, flags=re.DOTALL)
-    content = re.sub(r', create_memory_add_tool', '', content)
+    # 4. 删除 __pycache__ 中的编译文件
+    pycache = copaw_path / "agents" / "hooks" / "__pycache__"
+    if pycache.exists():
+        for f in pycache.glob("*lcm*"):
+            remove_file(f)
     
-    # 2. 删除 memory_add 工具注册代码块
-    patterns = [
-        r'# Register memory_add.*?logger\.debug\("Registered memory_add tool"\)\n',
-        r'if self\._enable_memory_manager and self\.memory_manager.*?create_memory_add_tool\(self\.memory_manager\).*?\n',
+    print("  [OK] LCM 模块卸载完成")
+
+
+def uninstall_memos():
+    """卸载 MemOS 相关文件"""
+    print()
+    print("=" * 60)
+    print("[*] 卸载 MemOS 相关文件")
+    print("=" * 60)
+    
+    workspace_dir = Path.home() / ".copaw" / "workspaces" / "default"
+    
+    # 删除 MemOS 相关目录
+    dirs_to_remove = [
+        workspace_dir / "active_skills" / "memos-cloud",
+        workspace_dir / "customized_skills" / "memos-cloud",
+        workspace_dir / "memos-backup",
+        workspace_dir / "memos-integration",
+        workspace_dir / "copaw-memos-integration",
     ]
     
-    for pattern in patterns:
-        content = re.sub(pattern, '', content, flags=re.DOTALL)
+    for d in dirs_to_remove:
+        remove_dir(d)
     
-    # 3. 删除 memos_enabled 检查
-    content = re.sub(r'if self\.memory_manager\.memos_enabled:.*?\n', '', content)
-    content = re.sub(r'and self\.memory_manager\.memos_enabled', '', content)
+    print("  [OK] MemOS 文件清理完成")
+
+
+def clean_local_files():
+    """清理本地配置文件"""
+    print()
+    print("=" * 60)
+    print("[*] 清理本地配置文件")
+    print("=" * 60)
     
-    if content != original_content:
-        with open(filepath, 'w', encoding='utf-8') as f:
-            f.write(content)
-        print(f"  [OK] 清理: {filepath}")
-    else:
-        print(f"  [i] 无需修改: {filepath}")
+    # 删除工作区根目录的文件
+    copaw_root = Path.home() / ".copaw"
+    files_to_remove = [
+        copaw_root / "lcm.db",
+        copaw_root / "lcm_installed_version.json",
+        copaw_root / "memory_lancedb_readme.md",
+        copaw_root / "check_lcm_data.py",
+        copaw_root / "recover_lcm_memories.py",
+    ]
+    
+    for f in files_to_remove:
+        remove_file(f)
+    
+    # 删除工作区中的测试脚本
+    workspace_dir = Path.home() / ".copaw" / "workspaces" / "default"
+    test_scripts = [
+        "check_lcm.py",
+        "check_lcm_deps.py",
+        "check_lcm_detail.py",
+        "test_lcm.py",
+        "test_lcm_compress.py",
+        "LCM_DESIGN.md",
+    ]
+    
+    for script in test_scripts:
+        remove_file(workspace_dir / script)
+    
+    # 删除 memory 目录中的 LCM 相关文件
+    memory_dir = Path.home() / ".copaw" / "memory"
+    if memory_dir.exists():
+        for f in memory_dir.glob("*lcm*"):
+            remove_file(f)
+    
+    print("  [OK] 本地文件清理完成")
 
 
 def main():
     print("=" * 60)
-    print("[DELETE] MemOS 硬编码集成卸载脚本 v2.0")
+    print("[DELETE] Copaw 记忆架构卸载脚本 v3.0")
     print("=" * 60)
+    print()
+    print("[!] 此脚本将卸载以下组件：")
+    print("  - LCM 模块 (本地上下文管理)")
+    print("  - MemOS 配置 (云端记忆)")
+    print("  - 所有相关配置文件和数据库")
+    print()
+    
+    confirm = input("确定要继续吗？(y/N): ").strip().lower()
+    if confirm != 'y':
+        print("[i] 已取消卸载")
+        return
+    
     print()
     
     # 获取 Copaw 路径
@@ -213,111 +222,31 @@ def main():
         sys.exit(1)
     
     print(f"[-] Copaw 路径: {copaw_path}")
+    
+    # 执行卸载步骤
+    uninstall_lcm(copaw_path)
+    uninstall_memos()
+    clean_local_files()
+    
+    # 更新 agent.json
     print()
+    print("=" * 60)
+    print("[*] 更新 agent.json 配置")
+    print("=" * 60)
+    update_agent_json()
     
-    # 1. 删除 memos_recall.py (如果存在)
-    print("[*] 步骤 1: 删除 MemOS Hook 文件")
-    hooks_dir = copaw_path / "agents" / "hooks"
-    remove_file(hooks_dir / "memos_recall.py")
-    
-    # 2. 恢复 hooks/__init__.py
-    print()
-    print("[*] 步骤 2: 恢复 hooks/__init__.py")
-    restore_init_file(
-        hooks_dir / "__init__.py",
-        imports_to_remove=[
-            "from .memos_recall import MemosRecallHook, MemosAddHook",
-            "from .memos_recall import MemosRecallHook",
-        ],
-        exports_to_remove=[
-            "MemosRecallHook",
-            "MemosAddHook",
-        ]
-    )
-    
-    # 3. 删除 memory_search.py (整个文件都是 MemOS 工具)
-    print()
-    print("[*] 步骤 3: 删除 tools/memory_search.py")
-    tools_dir = copaw_path / "agents" / "tools"
-    remove_file(tools_dir / "memory_search.py")
-    
-    # 4. 恢复 tools/__init__.py
-    print()
-    print("[*] 步骤 4: 恢复 tools/__init__.py")
-    restore_init_file(
-        tools_dir / "__init__.py",
-        imports_to_remove=[
-            "from .memory_search import (",
-            "    create_memory_search_tool,",
-            "    create_memory_add_tool,",
-            "    create_memory_feedback_tool,",
-            "    create_memory_get_tool,",
-            "    create_memory_delete_tool,",
-            "    create_task_status_tool,",
-            "    create_knowledgebase_tools,",
-            ")",
-            "from .memory_search import create_memory_add_tool",
-        ],
-        exports_to_remove=[
-            "create_memory_search_tool",
-            "create_memory_add_tool",
-            "create_memory_feedback_tool",
-            "create_memory_get_tool",
-            "create_memory_delete_tool",
-            "create_task_status_tool",
-            "create_knowledgebase_tools",
-        ]
-    )
-    
-    # 5. 清理 memory_manager.py
-    print()
-    print("[*] 步骤 5: 清理 memory/memory_manager.py (移除 MemOSClient)")
-    clean_memory_manager(copaw_path)
-    
-    # 6. 清理 react_agent.py
-    print()
-    print("[*] 步骤 6: 清理 react_agent.py (移除 memory_add 注册)")
-    clean_react_agent(copaw_path)
-    
-    # 7. 删除本地配置文件
-    print()
-    print("[*] 步骤 7: 删除本地配置文件")
-    workspace_dir = Path.home() / ".copaw" / "workspaces" / "default"
-    
-    dirs_to_remove = [
-        workspace_dir / "active_skills" / "memos-cloud",
-        workspace_dir / "customized_skills" / "memos-cloud",
-        workspace_dir / "memos-backup",
-        workspace_dir / "memos-integration",
-        workspace_dir / "copaw-memos-integration",
-        workspace_dir / "memos-integration-repo",
-        workspace_dir / "release-repo",
-    ]
-    
-    for d in dirs_to_remove:
-        if d.exists():
-            shutil.rmtree(d)
-            print(f"  [OK] 删除目录: {d}")
-    
-    files_to_remove = [
-        workspace_dir / "MEMOS_INTEGRATION_TASKS.md",
-    ]
-    
-    for f in files_to_remove:
-        remove_file(f)
-    
+    # 完成
     print()
     print("=" * 60)
     print("[OK] 卸载完成！")
     print("=" * 60)
     print()
-    print("[i] 下一步：配置官方 MCP 方式")
+    print("[!] 下一步操作：")
+    print("  1. 重启 Copaw: copaw restart")
+    print("  2. 验证日志中不再出现 LCM 或 MCP 相关信息")
     print()
-    print("1. 编辑 ~/.copaw/workspaces/default/agent.json")
-    print("2. 在 mcp.clients 中添加 memos 配置")
-    print("3. 重启 Copaw: copaw restart")
-    print()
-    print("[?] 详细说明: https://github.com/Hailpeng/copaw-memos-integration")
+    print("[?] 如需恢复 Copaw 官方上下文管理，无需额外配置")
+    print("    Copaw 内置的 MemoryCompactionHook 会自动生效")
     print()
 
 
